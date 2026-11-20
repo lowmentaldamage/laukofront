@@ -4,15 +4,15 @@
 //! are plain Rust with no Bevy types. Presentation modules (`render`, `input`, `ui`, `menu`)
 //! and `ai` sit on top of them. See `docs/ARCHITECTURE.md`.
 
-pub mod core;
-pub mod config;
-pub mod map;
-pub mod territory;
-pub mod combat;
-pub mod economy;
-pub mod sim;
 pub mod ai;
-pub mod render;
+pub mod combat;
+pub mod config;
+pub mod core;
+pub mod economy;
 pub mod input;
-pub mod ui;
+pub mod map;
 pub mod menu;
+pub mod render;
+pub mod sim;
+pub mod territory;
+pub mod ui;

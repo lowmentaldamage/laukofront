@@ -40,3 +40,19 @@ To be filled with date, machine and result for each line:
 ## Latest results
 
 Results are added below as each stage runs them.
+
+### 2026-11-20 — Stage 6 (dev machine, see ENVIRONMENT.md)
+
+| Suite | Passed | Failed |
+|---|---|---|
+| unit tests in `src/` (rng, config) | 7 | 0 |
+| `tests/combat_tests.rs` | 7 | 0 |
+| `tests/economy_tests.rs` | 10 | 0 |
+| `tests/map_tests.rs` | 10 | 0 |
+| `tests/sim_tests.rs` | 11 | 0 |
+| **Total** | **45** | **0** |
+
+- `cargo clippy --all-targets -- -D warnings`: clean.
+- `cargo fmt --check`: clean.
+- No `unwrap()`/`expect()` in `src/` outside `#[cfg(test)]`; no Bevy imports in the simulation
+  modules (checked with grep).
