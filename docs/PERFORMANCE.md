@@ -68,3 +68,22 @@ Command: `cargo run --release --bin sim_bench -- --ticks 20000` (seed 1).
 - Cost scales roughly linearly with territory count (the tick touches every territory for caps,
   growth and gold).
 - Not yet measured: frame time and FPS (from Stage 8), mid-range hardware.
+
+### 2026-11-20 — Port milestone P2: engine_bench (economy only)
+
+`cargo run --release --bin engine_bench` (2000 ticks, seed 1). Setup = map generation, players,
+bot spawns. Ticks contain only spawn-phase bookkeeping and per-player economy; attacks come in P3.
+
+| Map | Tiles | Bots | Setup (ms) | Ticks/s | Mean tick (µs) | Max tick (µs) |
+|---|---|---|---|---|---|---|
+| Small | 400000 | 0 | 39.1 | 10520779 | 0.10 | 1.70 |
+| Small | 400000 | 10 | 42.2 | 1615248 | 0.62 | 21.90 |
+| Small | 400000 | 50 | 40.7 | 397219 | 2.52 | 9.60 |
+| Medium | 900000 | 0 | 93.0 | 10672359 | 0.09 | 0.90 |
+| Medium | 900000 | 10 | 90.4 | 1664724 | 0.60 | 35.70 |
+| Medium | 900000 | 50 | 93.5 | 379240 | 2.64 | 187.90 |
+| Large | 1600000 | 0 | 161.0 | 11448197 | 0.09 | 0.90 |
+| Large | 1600000 | 10 | 162.6 | 1755772 | 0.57 | 1.20 |
+| Large | 1600000 | 50 | 159.8 | 385000 | 2.60 | 11.90 |
+
+Far inside the 2 ms tick budget; the real cost will be attacks (P3).

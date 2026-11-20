@@ -48,7 +48,8 @@ cargo clippy --all-targets -- -D warnings
 
 ```powershell
 cargo run                              # the game (Stage 3: an empty app that exits at once)
-cargo run --release --bin sim_bench    # headless simulation benchmark
+cargo run --release --bin engine_bench # headless engine benchmark
+cargo run --release --bin map_preview -- --seed 7 --out map.bmp  # picture of a generated map
 ```
 
 Always run from the project root so `assets/` is found.

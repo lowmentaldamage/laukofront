@@ -14,3 +14,6 @@ Versions follow the build guide milestones. `1.0.0` is the finished game.
 
 - Renamed to **laukofront**; relicensed to AGPL-3.0-only (OpenFront port, D16–D20).
 - New `PLAN.md` for the OpenFront engine port; `NOTICE.md` with attribution.
+- P1: ported PRNG, DetMath, tile map; own terrain generator; `map_preview`.
+- P2: players, spawn phase and spawning, troop growth and gold (upstream formulas); `engine_bench`;
+  old territory sim removed.

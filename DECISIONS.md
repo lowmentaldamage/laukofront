@@ -149,3 +149,19 @@ One entry per decision: date, choice, reason, rejected options.
   `pow(h, 1.6)`. See `docs/MAP_GENERATION.md`.
 - **Reason:** a first try with a square edge fade produced rectangular continents; the blended
   round/square falloff gives coastlines with bays and peninsulas.
+
+## D23. Tile sets as vectors with a game-wide slot index
+- **Date:** 2026-11-20
+- **Choice:** each player keeps `tiles` and `border` vectors; `Game` keeps each tile's index in its
+  owner's vectors, giving O(1) add/remove (upstream uses a hash-based `TileSet`).
+- **Reason:** a tile has exactly one owner, so one index per tile is enough and needs no hashing.
+- **Consequence:** iteration order differs from upstream. The rules stay the same, but a laukofront
+  match is not tick-for-tick identical to the same match in OpenFront. Nothing needs that.
+
+## D24. Old territory sim removed; benchmark and AI config replaced
+- **Date:** 2026-11-20
+- **Choice:** P2 deletes the Stage 6 modules (`core`, `map`, `territory`, `combat`, `economy`,
+  `sim`, `ai`), their tests, `sim_bench` and `assets/config/ai.toml`. `game.toml` now holds the
+  ported rules. `engine_bench` replaces `sim_bench`.
+- **Reason:** they modelled the abandoned territory-graph design (D16). Git history keeps them.
+  Upstream's AI settings will come back with the bot and nation milestones.

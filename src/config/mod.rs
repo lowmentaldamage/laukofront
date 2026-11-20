@@ -1,16 +1,31 @@
-//! Loads `assets/config/game.toml` and `assets/config/ai.toml` into typed structs.
-//! Every key is required (`deny_unknown_fields` also rejects typos). Values are range-checked.
+//! Loads `assets/config/game.toml` into typed structs. Every key is required and unknown keys are
+//! rejected, so a typo or a missing value stops the game with a message naming it.
+//! The formulas that use these numbers live in `engine::rules`.
 
 use serde::de::DeserializeOwned;
 use serde::Deserialize;
+use std::fmt;
 use std::path::Path;
 
-use crate::core::{GameError, MAX_PLAYERS, MAX_TERRITORIES, MILLI};
+use crate::engine_lib::terrain::TerrainParams;
 
-/// Default location of the balance file, relative to the working directory.
+/// Default location of the rules file, relative to the working directory.
 pub const GAME_CONFIG_PATH: &str = "assets/config/game.toml";
-/// Default location of the AI file, relative to the working directory.
-pub const AI_CONFIG_PATH: &str = "assets/config/ai.toml";
+
+/// A config file could not be read, parsed or validated.
+#[derive(Debug)]
+pub struct ConfigError {
+    pub source: String,
+    pub message: String,
+}
+
+impl fmt::Display for ConfigError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "bad config in {}: {}", self.source, self.message)
+    }
+}
+
+impl std::error::Error for ConfigError {}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum MapSize {
@@ -26,242 +41,200 @@ impl MapSize {
 #[derive(Debug, Clone, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct GameConfig {
-    pub sim: SimConfig,
-    pub map: MapConfig,
-    pub territory: TerritoryConfig,
-    pub growth: GrowthConfig,
-    pub reinforce: ReinforceConfig,
+    pub game: GameRules,
+    pub map: MapSizes,
+    pub terrain: TerrainConfig,
+    pub troops: TroopRules,
+    pub gold: GoldRules,
+    pub attack: AttackRules,
 }
 
 #[derive(Debug, Clone, Deserialize)]
 #[serde(deny_unknown_fields)]
-pub struct SimConfig {
+pub struct GameRules {
     pub tick_hz: u32,
-    pub max_players: u32,
-    pub max_match_ticks: u64,
+    pub spawn_phase_ticks: u64,
+    pub spawn_immunity_ticks: u64,
+    pub min_spawn_distance: u32,
+    pub spawn_radius: u32,
+    pub win_percent: u32,
 }
 
 #[derive(Debug, Clone, Deserialize)]
 #[serde(deny_unknown_fields)]
-pub struct MapConfig {
-    pub candidates_per_point: u32,
-    pub small: MapSizeConfig,
-    pub medium: MapSizeConfig,
-    pub large: MapSizeConfig,
-}
-
-impl MapConfig {
-    pub fn size(&self, size: MapSize) -> &MapSizeConfig {
-        match size {
-            MapSize::Small => &self.small,
-            MapSize::Medium => &self.medium,
-            MapSize::Large => &self.large,
-        }
-    }
+pub struct MapSizes {
+    pub small: MapDims,
+    pub medium: MapDims,
+    pub large: MapDims,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
 #[serde(deny_unknown_fields)]
-pub struct MapSizeConfig {
-    pub width: u16,
-    pub height: u16,
-    pub territories: u16,
+pub struct MapDims {
+    pub width: u32,
+    pub height: u32,
 }
 
 #[derive(Debug, Clone, Deserialize)]
 #[serde(deny_unknown_fields)]
-pub struct TerritoryConfig {
-    pub start_troops: u32,
-    pub neutral_troops_min: u32,
-    pub neutral_troops_max: u32,
-    pub base_cap: u32,
-    pub cap_per_owned_neighbor: u32,
-    pub gold_per_min: u32,
+pub struct TerrainConfig {
+    pub land_fraction: f64,
+    pub octaves: u32,
+    pub base_cells: f64,
+    pub edge_fade: f64,
+    pub mountain_exponent: f64,
+    pub min_island_tiles: u32,
+    pub min_lake_tiles: u32,
 }
 
 #[derive(Debug, Clone, Deserialize)]
 #[serde(deny_unknown_fields)]
-pub struct GrowthConfig {
-    pub interval_ticks: u32,
-    pub percent: u32,
-    pub min_amount: u32,
+pub struct TroopRules {
+    pub human_start: i64,
+    pub bot_start: i64,
+    pub cap_multiplier: f64,
+    pub cap_tile_coeff: f64,
+    pub cap_tile_exponent: f64,
+    pub cap_base: f64,
+    pub bot_cap_divisor: f64,
+    pub growth_base: f64,
+    pub growth_exponent: f64,
+    pub growth_divisor: f64,
+    pub bot_growth_multiplier: f64,
 }
 
 #[derive(Debug, Clone, Deserialize)]
 #[serde(deny_unknown_fields)]
-pub struct ReinforceConfig {
-    pub cost_gold: u32,
-    pub troops: u32,
+pub struct GoldRules {
+    pub human_per_tick: i64,
+    pub bot_per_tick: i64,
+    pub starting_gold: i64,
 }
 
 #[derive(Debug, Clone, Deserialize)]
 #[serde(deny_unknown_fields)]
-pub struct AiConfig {
-    pub easy: AiDifficultyConfig,
-    pub normal: AiDifficultyConfig,
-    pub hard: AiDifficultyConfig,
+pub struct AttackRules {
+    pub human_default_percent: u32,
+    pub bot_default_percent: u32,
 }
 
-#[derive(Debug, Clone, Deserialize)]
-#[serde(deny_unknown_fields)]
-pub struct AiDifficultyConfig {
-    pub think_interval_ticks: u32,
-    pub attack_ratio: f32,
-    pub send_percent: u32,
-    pub reserve_troops: u32,
-    pub prefer_cap_targets: bool,
-}
-
-fn read(path: &Path) -> Result<String, GameError> {
-    std::fs::read_to_string(path).map_err(|source| GameError::Io {
-        path: path.display().to_string(),
-        source,
-    })
-}
-
-fn parse<T: DeserializeOwned>(text: &str, source: &str) -> Result<T, GameError> {
-    toml::from_str(text).map_err(|e| GameError::Config {
+fn err(source: &str, message: impl Into<String>) -> ConfigError {
+    ConfigError {
         source: source.to_string(),
-        message: e.message().to_string(),
-    })
+        message: message.into(),
+    }
 }
 
-fn check(ok: bool, source: &str, message: impl Into<String>) -> Result<(), GameError> {
+fn check(ok: bool, source: &str, message: &str) -> Result<(), ConfigError> {
     if ok {
         Ok(())
     } else {
-        Err(GameError::Config {
-            source: source.to_string(),
-            message: message.into(),
-        })
+        Err(err(source, message))
     }
 }
 
+fn parse<T: DeserializeOwned>(text: &str, source: &str) -> Result<T, ConfigError> {
+    toml::from_str(text).map_err(|e| err(source, e.message()))
+}
+
 impl GameConfig {
-    /// Loads and validates a game config file.
-    pub fn load(path: impl AsRef<Path>) -> Result<Self, GameError> {
+    /// Loads and validates a config file.
+    pub fn load(path: impl AsRef<Path>) -> Result<Self, ConfigError> {
         let path = path.as_ref();
-        Self::from_toml_str(&read(path)?, &path.display().to_string())
+        let name = path.display().to_string();
+        let text =
+            std::fs::read_to_string(path).map_err(|e| err(&name, format!("cannot read: {e}")))?;
+        Self::from_toml_str(&text, &name)
     }
 
     /// Parses and validates config text. `source` names the text in error messages.
-    pub fn from_toml_str(text: &str, source: &str) -> Result<Self, GameError> {
+    pub fn from_toml_str(text: &str, source: &str) -> Result<Self, ConfigError> {
         let cfg: GameConfig = parse(text, source)?;
         cfg.validate(source)?;
         Ok(cfg)
     }
 
-    fn validate(&self, src: &str) -> Result<(), GameError> {
-        check(self.sim.tick_hz >= 1, src, "sim.tick_hz must be at least 1")?;
+    fn validate(&self, s: &str) -> Result<(), ConfigError> {
+        let g = &self.game;
+        check(g.tick_hz >= 1, s, "game.tick_hz must be at least 1")?;
         check(
-            (2..=MAX_PLAYERS as u32).contains(&self.sim.max_players),
-            src,
-            "sim.max_players must be 2..=255",
+            (1..=100).contains(&g.win_percent),
+            s,
+            "game.win_percent must be 1..=100",
         )?;
         check(
-            self.sim.max_match_ticks >= 1,
-            src,
-            "sim.max_match_ticks must be at least 1",
+            g.spawn_radius >= 1,
+            s,
+            "game.spawn_radius must be at least 1",
         )?;
-        check(
-            self.map.candidates_per_point >= 1,
-            src,
-            "map.candidates_per_point must be at least 1",
-        )?;
-        for (name, s) in [
-            ("small", &self.map.small),
-            ("medium", &self.map.medium),
-            ("large", &self.map.large),
+        for (name, d) in [
+            ("small", self.map.small),
+            ("medium", self.map.medium),
+            ("large", self.map.large),
         ] {
-            let cells = s.width as usize * s.height as usize;
             check(
-                s.width >= 2 && s.height >= 2,
-                src,
-                format!("map.{name}: width and height must be at least 2"),
-            )?;
-            check(
-                s.territories as u32 >= self.sim.max_players,
-                src,
-                format!("map.{name}.territories must be at least sim.max_players"),
-            )?;
-            check(
-                (s.territories as usize) <= cells && (s.territories as usize) <= MAX_TERRITORIES,
-                src,
-                format!("map.{name}.territories must not exceed the number of cells"),
+                d.width >= 32 && d.height >= 32 && d.width <= 4096 && d.height <= 4096,
+                s,
+                &format!("map.{name}: width and height must be 32..=4096"),
             )?;
         }
-        let t = &self.territory;
+        let t = &self.terrain;
         check(
-            t.start_troops >= 1,
-            src,
-            "territory.start_troops must be at least 1",
+            t.land_fraction > 0.05 && t.land_fraction < 0.95,
+            s,
+            "terrain.land_fraction must be between 0.05 and 0.95",
+        )?;
+        check(t.octaves >= 1, s, "terrain.octaves must be at least 1")?;
+        let tr = &self.troops;
+        check(
+            tr.human_start >= 0 && tr.bot_start >= 0,
+            s,
+            "troops.*_start must not be negative",
+        )?;
+        check(tr.cap_base > 0.0, s, "troops.cap_base must be positive")?;
+        check(
+            tr.bot_cap_divisor > 0.0,
+            s,
+            "troops.bot_cap_divisor must be positive",
         )?;
         check(
-            t.neutral_troops_min <= t.neutral_troops_max,
-            src,
-            "territory.neutral_troops_min must be <= neutral_troops_max",
+            tr.growth_divisor > 0.0,
+            s,
+            "troops.growth_divisor must be positive",
         )?;
+        let a = &self.attack;
         check(
-            t.base_cap >= 1,
-            src,
-            "territory.base_cap must be at least 1",
-        )?;
-        check(
-            self.growth.interval_ticks >= 1,
-            src,
-            "growth.interval_ticks must be at least 1",
-        )?;
-        check(
-            self.growth.percent <= 100,
-            src,
-            "growth.percent must be 0..=100",
-        )?;
-        check(
-            self.reinforce.troops >= 1,
-            src,
-            "reinforce.troops must be at least 1",
+            (1..=100).contains(&a.human_default_percent)
+                && (1..=100).contains(&a.bot_default_percent),
+            s,
+            "attack.*_default_percent must be 1..=100",
         )?;
         Ok(())
     }
 
-    /// Gold income per owned territory per tick, in milli-gold (integer division).
-    pub fn gold_milli_per_tick(&self) -> u64 {
-        self.territory.gold_per_min as u64 * MILLI / (60 * self.sim.tick_hz as u64)
-    }
-}
-
-impl AiConfig {
-    /// Loads and validates an AI config file.
-    pub fn load(path: impl AsRef<Path>) -> Result<Self, GameError> {
-        let path = path.as_ref();
-        Self::from_toml_str(&read(path)?, &path.display().to_string())
-    }
-
-    /// Parses and validates AI config text.
-    pub fn from_toml_str(text: &str, source: &str) -> Result<Self, GameError> {
-        let cfg: AiConfig = parse(text, source)?;
-        for (name, d) in [
-            ("easy", &cfg.easy),
-            ("normal", &cfg.normal),
-            ("hard", &cfg.hard),
-        ] {
-            check(
-                d.think_interval_ticks >= 1,
-                source,
-                format!("{name}.think_interval_ticks must be at least 1"),
-            )?;
-            check(
-                d.attack_ratio > 0.0,
-                source,
-                format!("{name}.attack_ratio must be positive"),
-            )?;
-            check(
-                (1..=100).contains(&d.send_percent),
-                source,
-                format!("{name}.send_percent must be 1..=100"),
-            )?;
+    pub fn map_dims(&self, size: MapSize) -> MapDims {
+        match size {
+            MapSize::Small => self.map.small,
+            MapSize::Medium => self.map.medium,
+            MapSize::Large => self.map.large,
         }
-        Ok(cfg)
+    }
+
+    /// Terrain generator settings for a map size.
+    pub fn terrain_params(&self, size: MapSize) -> TerrainParams {
+        let d = self.map_dims(size);
+        let t = &self.terrain;
+        TerrainParams {
+            width: d.width,
+            height: d.height,
+            land_fraction: t.land_fraction,
+            octaves: t.octaves,
+            base_cells: t.base_cells,
+            edge_fade: t.edge_fade,
+            mountain_exponent: t.mountain_exponent,
+            min_island_tiles: t.min_island_tiles,
+            min_lake_tiles: t.min_lake_tiles,
+        }
     }
 }
 
@@ -274,45 +247,49 @@ mod tests {
     }
 
     #[test]
-    fn shipped_files_load() {
-        let g = GameConfig::load(GAME_CONFIG_PATH).expect("game.toml");
-        assert_eq!(g.sim.tick_hz, 10);
-        assert_eq!(g.gold_milli_per_tick(), 100);
-        AiConfig::load(AI_CONFIG_PATH).expect("ai.toml");
+    fn shipped_file_loads() {
+        let c = GameConfig::load(GAME_CONFIG_PATH).expect("game.toml");
+        assert_eq!(c.game.tick_hz, 10);
+        assert_eq!(c.troops.human_start, 25_000);
+        assert_eq!(
+            c.map_dims(MapSize::Medium),
+            MapDims {
+                width: 1200,
+                height: 750
+            }
+        );
     }
 
     #[test]
     fn missing_key_is_named() {
-        let broken = shipped().replace("start_troops = 50", "");
-        let err = GameConfig::from_toml_str(&broken, "test")
+        let broken = shipped().replace("human_start = 25000", "");
+        let e = GameConfig::from_toml_str(&broken, "t")
             .unwrap_err()
             .to_string();
-        assert!(err.contains("start_troops"), "{err}");
+        assert!(e.contains("human_start"), "{e}");
     }
 
     #[test]
     fn unknown_key_is_rejected() {
-        let broken = shipped().replace("[growth]", "[growth]\ntypo_key = 1");
-        let err = GameConfig::from_toml_str(&broken, "test")
+        let broken = shipped().replace("[gold]", "[gold]\ntypo = 1");
+        let e = GameConfig::from_toml_str(&broken, "t")
             .unwrap_err()
             .to_string();
-        assert!(err.contains("typo_key"), "{err}");
+        assert!(e.contains("typo"), "{e}");
     }
 
     #[test]
-    fn out_of_range_value_is_rejected() {
-        let broken = shipped().replace("percent = 5 ", "percent = 500 ");
-        let err = GameConfig::from_toml_str(&broken, "test")
+    fn out_of_range_is_rejected() {
+        let broken = shipped().replace("win_percent = 80", "win_percent = 0");
+        let e = GameConfig::from_toml_str(&broken, "t")
             .unwrap_err()
             .to_string();
-        assert!(err.contains("growth.percent"), "{err}");
+        assert!(e.contains("win_percent"), "{e}");
     }
 
     #[test]
     fn missing_file_names_path() {
-        let err = GameConfig::load("no/such/file.toml")
-            .unwrap_err()
-            .to_string();
-        assert!(err.contains("no/such/file.toml"), "{err}");
+        let e = GameConfig::load("no/such.toml").unwrap_err().to_string();
+        assert!(e.contains("no/such.toml"), "{e}");
     }
 }

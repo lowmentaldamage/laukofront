@@ -1,7 +1,7 @@
 # Project status
 
 **Date:** 2026-11-20
-**State:** Stages 0–7 of the build guide were done on the original design; the project then switched to porting the OpenFront engine (D16). Port milestone P0 is done; P1–P5 are next.
+**State:** OpenFront engine port in progress. P0 (rename/relicense), P1 (engine lib) and P2 (players, spawn, economy) are done; P3 attacks, P4 bots and P5 Bevy client are next. Not playable yet.
 The game is **not playable yet**: there is no window, map rendering or input. The simulation
 rules work and are tested headless.
 

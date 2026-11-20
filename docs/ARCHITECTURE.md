@@ -1,77 +1,55 @@
 # Architecture
 
-## Modules and what they own
+laukofront ports the OpenFront engine (see `NOTICE.md`). Module names follow upstream packages.
 
-| Module | Owns | Bevy? |
-|---|---|---|
-| `core` | `TerritoryId`, `PlayerId`, `Owner`, `GameError`, `OrderError`, `Rng` (SplitMix64), constants | no |
-| `config` | `GameConfig`, `AiConfig`, `MapSize`; loading and validating the TOML files | no |
-| `map` | `Map`: cell raster, seed points, areas, centroids, adjacency (CSR) | no |
-| `territory` | `Territory` and `PlayerState` plain data | no |
-| `combat` | `resolve()`: one attack against one territory; `AttackOutcome` | no |
-| `economy` | troop caps, growth, gold income | no |
-| `sim` | `World` (all match state), `Order`, `Event`, `VictoryReason`, the tick | no |
-| `ai` | AI players; today `RandomAttacker` (stand-in), Stage 11 the real AI | no |
-| `render` | map mesh, colours, borders, camera (Stage 8) | yes |
-| `input` | mouse/keyboard → selection and orders (Stage 9) | yes |
-| `ui` | HUD panels and notifications (Stage 10) | yes |
-| `menu` | menus, match setup, end screen (Stage 12) | yes |
-| `main.rs` | builds the Bevy `App` | yes |
-| `bin/sim_bench.rs` | headless benchmark | no |
+## Modules
+
+| Module | Ports (upstream) | Owns | Bevy? |
+|---|---|---|---|
+| `engine_lib::random` | `engine-lib/PseudoRandom.ts` | sfc32 PRNG, bit-identical to upstream | no |
+| `engine_lib::detmath` | `engine-lib/DetMath.ts` | deterministic `exp`/`log`/`pow`/`atan2` | no |
+| `engine_lib::game_map` | `engine-lib/game/GameMapImpl.ts` | tile grid: terrain byte + owner state per tile | no |
+| `engine_lib::terrain` | — (ours) | map generator | no |
+| `config` | parts of `Config.ts` / `EngineConfig.ts` | `GameConfig` loaded from `assets/config/game.toml` | no |
+| `engine::player` | `game/PlayerImpl.ts` (data) | `Player`, `PlayerInfo`, `PlayerType` | no |
+| `engine::rules` | `Config.troopCap`, `troopIncreaseRate`, `goldAdditionRate`, `startManpower`, `attackAmount` | formulas | no |
+| `engine::game` | `game/GameImpl.ts` (core) | `Game`: map, players, tick loop, conquer/relinquish, borders, spawn phase; `Execution` trait | no |
+| `engine::executions` | `SpawnTimerExecution`, `SpawnExecution`, `PlayerExecution` | executions | no |
+| `engine::runner` | `GameRunner.ts`, `ExecutionManager.ts` | match setup, `Intent` → execution | no |
+| `engine::util` | `Util.simpleHash`, `getSpawnTiles` | helpers | no |
+| `render`, `input`, `ui`, `menu` | — | Bevy client (P5) | yes |
+| `bin/engine_bench`, `bin/map_preview` | — | tools | no |
 
 ## Allowed dependencies
 
 ```
-core
- └─ config
-     └─ map
-         └─ territory
-             ├─ combat
-             └─ economy
-                 └─ sim  (uses combat + economy)
-                     └─ ai
-                         └─ render, input, ui, menu  (Bevy)
-                             └─ main.rs
+engine_lib  ←  config  ←  engine  ←  (Bevy) render / input / ui / menu  ←  main.rs
 ```
 
-A module may only use modules above it in this tree. In particular:
-- Nothing below `sim` is allowed to know about Bevy. The sim must build and test without a window.
-- `config` does not depend on `economy` or `sim`.
-- `render`, `ui` and `menu` only **read** `World`. The only ways to change a match are
-  `World::queue_order` (normal play), `World::tick`, and `World::set_territory` / `set_gold`
-  (setup, tests, save loading).
-- `ai` produces `Order`s through `World::queue_order`, like the human.
+- Nothing in `engine_lib`, `config` or `engine` uses Bevy, wall-clock time, `unwrap()` outside
+  tests, or platform transcendental maths (`powf`, `exp`, `ln` → use `detmath`).
+- The client only reads `Game` and sends `Intent`s; it never mutates game state directly.
 
-## Simulation tick vs frame
+## Tick (`engine::game::Game::execute_next_tick`, as upstream)
 
-- `World::tick()` advances exactly one 100 ms step. It does not know about real time.
-- From Stage 8, Bevy's `FixedUpdate` schedule calls `tick()` at 10 Hz × game speed.
-- Rendering runs every frame. It reads `World::events()` after each tick to find territories whose
-  owner changed and rewrites only their vertex colours.
+1. Clear last tick's changed-tile list.
+2. Tick every active execution (during the spawn phase, only those active in it).
+3. Initialise executions added this tick, FIFO, including ones added while initialising. During the
+   spawn phase, executions not active in it stay queued.
+4. Drop finished executions.
+5. `ticks += 1`.
+
+So an intent sent for tick N creates an execution that is initialised at the end of N and acts on
+N + 1 — the same one-tick delay as upstream.
+
+## Ownership bookkeeping
+
+The tile map stores each tile's owner (12-bit small id, 0 = nobody). Each `Player` keeps vectors of
+its tiles and border tiles; the `Game` keeps, per tile, its index in its owner's vectors, so add and
+remove are O(1). `conquer`/`relinquish` update the four neighbours' border status, as upstream.
 
 ## Data flow
 
 ```
-mouse/keys ─► input ─┐
-                     ├─► World::queue_order ─► (next tick) World::tick ─► events ─► render / ui / audio
-AI (every 1 s) ──────┘
+input / bots ─► Intent ─► run_turn ─► Execution ─► Game::execute_next_tick ─► changed tiles ─► renderer
 ```
-
-## Tick order (`sim::World::tick`)
-
-1. Stop if the match is over.
-2. Clear last tick's events.
-3. Resolve queued orders in queue order (re-checking ownership and troops).
-4. Tick counter + 1.
-5. Recompute troop caps; on every 10th tick, grow troops.
-6. Refresh player totals; pay gold.
-7. Eliminate players with no territory; check conquest and time-limit victory.
-
-## Rules for simulation code
-
-- No Bevy types in `core`, `config`, `map`, `territory`, `combat`, `economy`, `sim`.
-- No `unwrap()` / `expect()` outside tests. Errors are `GameError` / `OrderError`.
-- No allocation inside the tick once buffers are warm: orders are double-buffered
-  (`orders` / `resolving` swap), events reuse one `Vec`, caps and totals are recomputed in place.
-- Integer maths only in the sim (troops `u32`, gold in milli-gold `u64`, distances in `i64`),
-  so results are identical on every machine.

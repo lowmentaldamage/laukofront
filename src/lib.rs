@@ -1,19 +1,12 @@
-//! laukofront: an OpenFront-style territorial conquest game.
+//! laukofront: a Rust port of the OpenFront territorial strategy engine (see NOTICE.md).
 //!
-//! Simulation modules (`core`, `config`, `map`, `territory`, `combat`, `economy`, `sim`)
-//! are plain Rust with no Bevy types. Presentation modules (`render`, `input`, `ui`, `menu`)
-//! and `ai` sit on top of them. See `docs/ARCHITECTURE.md`.
+//! - `engine_lib`, `engine`, `config`: the simulation, plain Rust, no Bevy types.
+//! - `render`, `input`, `ui`, `menu`: the Bevy client (milestone P5).
 
-pub mod ai;
-pub mod combat;
 pub mod config;
-pub mod core;
-pub mod economy;
+pub mod engine;
 pub mod engine_lib;
 pub mod input;
-pub mod map;
 pub mod menu;
 pub mod render;
-pub mod sim;
-pub mod territory;
 pub mod ui;

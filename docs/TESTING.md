@@ -65,3 +65,20 @@ Results are added below as each stage runs them.
 - `engine_lib::game_map`: neighbour order N,S,W,E; terrain types; owner ids; border; edges.
 - `engine_lib::terrain`: determinism, land share, ocean edge, shoreline consistency, terrain mix.
 - Reference values: hand transcription of upstream PseudoRandom/DetMath run in Node 26 (D21).
+
+### 2026-11-20 — Port milestone P2 (players, spawn, economy)
+
+The Stage 6 test files were removed with the old sim (D24); the counts above are history.
+
+| Suite | Passed |
+|---|---|
+| unit tests in `src/` (engine_lib, config, engine::player/rules/util) | 33 |
+| `tests/engine_p2.rs` | 10 |
+| **Total** | **43**, 0 failed |
+
+Covers: bot spawns (full 52-tile disks, ≥ 30 apart), spawn phase timer (ends on tick 101), human
+spawn ends the phase, re-spawn moves the player, late spawn ignored, spawn on water/coast, no growth
+during spawn phase, growth and gold equal the upstream formulas tick by tick for 50 ticks, troops
+level off at the cap, determinism (state hash), conquer/relinquish bookkeeping (tile and border sets
+always match the map). Upstream `simpleHash` checked against Java string hashes.
+`cargo clippy --all-targets -- -D warnings`: clean.

@@ -1,42 +1,54 @@
-# All balance numbers for laukofront. See PLAN.md section 3 and docs/GAMEPLAY.md.
-# Every key is required: a missing or unknown key stops the game with a message naming it.
+# Rules for laukofront. Values marked "upstream" are OpenFront's (see PLAN.md section 3);
+# "ours" are laukofront's own. Every key is required: a missing or unknown key stops the game
+# with a message naming it.
 
-[sim]
-tick_hz = 10                 # simulation ticks per second
-max_players = 6              # 1 human + up to 5 AI
-max_match_ticks = 36000      # 60 minutes at 10 Hz; time-limit victory
+[game]
+tick_hz = 10                    # upstream: one tick per 100 ms
+spawn_phase_ticks = 100         # upstream: singleplayer spawn phase
+spawn_immunity_ticks = 50       # upstream: DEFAULT_SPAWN_IMMUNITY_TICKS
+min_spawn_distance = 30         # upstream: minDistanceBetweenPlayers (manhattan tiles)
+spawn_radius = 4                # upstream: getSpawnTiles disk radius
+win_percent = 80                # upstream: PERCENT_TILES_OWNED_TO_WIN
 
-[map]
-candidates_per_point = 10    # best-candidate sampling quality
-
-[map.small]
-width = 192
-height = 120
-territories = 80
+[map.small]                     # ours
+width = 800
+height = 500
 
 [map.medium]
-width = 256
-height = 160
-territories = 150
+width = 1200
+height = 750
 
 [map.large]
-width = 352
-height = 220
-territories = 300
+width = 1600
+height = 1000
 
-[territory]
-start_troops = 50            # each player's starting territory
-neutral_troops_min = 5
-neutral_troops_max = 20
-base_cap = 100
-cap_per_owned_neighbor = 20
-gold_per_min = 60            # per owned territory
+[terrain]                       # ours: see docs/MAP_GENERATION.md
+land_fraction = 0.5
+octaves = 6
+base_cells = 4.0
+edge_fade = 0.45
+mountain_exponent = 1.6
+min_island_tiles = 60
+min_lake_tiles = 40
 
-[growth]
-interval_ticks = 10          # growth happens once per second
-percent = 5                  # +5% of current troops, rounded down
-min_amount = 1               # but at least +1
+[troops]                        # upstream: Config.troopCap / troopIncreaseRate / startManpower
+human_start = 25000
+bot_start = 10000
+cap_multiplier = 2.0            # cap = cap_multiplier * (tiles^cap_tile_exponent * cap_tile_coeff + cap_base)
+cap_tile_coeff = 1000.0
+cap_tile_exponent = 0.6
+cap_base = 50000.0
+bot_cap_divisor = 3.0
+growth_base = 10.0              # growth = (growth_base + troops^growth_exponent / growth_divisor) * (1 - troops / cap)
+growth_exponent = 0.73
+growth_divisor = 4.0
+bot_growth_multiplier = 0.5
 
-[reinforce]
-cost_gold = 200
-troops = 25
+[gold]                          # upstream: goldAdditionRate
+human_per_tick = 100
+bot_per_tick = 50
+starting_gold = 0
+
+[attack]                        # upstream: attackAmount (share of troops the UI/bots send by default)
+human_default_percent = 20
+bot_default_percent = 5
