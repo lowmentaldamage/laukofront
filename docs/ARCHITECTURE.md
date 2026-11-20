@@ -21,13 +21,17 @@ laukofront ports the OpenFront engine (see `NOTICE.md`). Module names follow ups
 | `engine::bots` | `TribeExecution`, `TribeAttackBehavior`, `AiAttackBehavior` (land) | bot AI | no |
 | `engine::runner` | `GameRunner.ts`, `ExecutionManager.ts` | match setup, `Intent` → execution | no |
 | `engine::util` | `Util.simpleHash`, `getSpawnTiles` | helpers | no |
-| `render`, `input`, `ui`, `menu` | — | Bevy client (P5) | yes |
+| `client` | — | `GameState` resource, fixed-tick runner, pending intents, changed tiles, settings, notices | yes |
+| `render` (+ `camera`, `palette`, `perf`) | — | map texture, repaint of changed tiles, camera, colours, frame-time/screenshot tools | yes |
+| `input` | — | click rules (`click_action`, pure), mouse and keys → intents | yes |
+| `ui` | — | HUD text (pure builders + Bevy nodes) | yes |
+| `menu` | — | Stage 12 | yes |
 | `bin/engine_bench`, `bin/map_preview`, `bin/bot_match` | — | tools | no |
 
 ## Allowed dependencies
 
 ```
-engine_lib  ←  config  ←  engine  ←  (Bevy) render / input / ui / menu  ←  main.rs
+engine_lib  ←  config  ←  engine  ←  (Bevy) client  ←  render / input / ui / menu  ←  main.rs
 ```
 
 - Nothing in `engine_lib`, `config` or `engine` uses Bevy, wall-clock time, `unwrap()` outside

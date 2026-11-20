@@ -127,3 +127,16 @@ Same command as P3; bots now also run their own AI on top of the random attacks.
 | Large | 1600000 | 50 | 115.2 | 2715 | 368.32 | 2128.80 | 796035 |
 
 A whole 10-bot Small match (~25 000 ticks) runs in 1–2 s of real time.
+
+### 2026-11-20 — Port milestone P5: frame time at 1080p
+
+`laukofront --seed 3 --autoplay --perf-run 60` (1920×1080, no vsync, release, autoplay at 3×
+speed = 30 ticks/s, first 2 s not recorded). Dev PC (RTX 4090, Ryzen 9 7950X).
+
+| Setup | Frames | Avg frame | FPS | p99 | Max | Frames > 33 ms |
+|---|---|---|---|---|---|---|
+| Medium 1200×750, 20 bots | 75 019 | 0.80 ms | 1250 | 1.79 ms | 7.31 ms | 0 |
+| Large 1600×1000, 50 bots | 74 077 | 0.81 ms | 1235 | 2.63 ms | 6.50 ms | 0 |
+
+Targets on this PC: 60 FPS ✔, no frame over 33 ms ✔. Still not measured on a mid-range PC
+(Stage 15). A first run showed exactly 60 FPS: the unfocused window was throttled (D31).

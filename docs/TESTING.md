@@ -128,3 +128,23 @@ Bots-only matches (`cargo run --release --bin bot_match -- --size small --bots 1
 | 6 | Bot 5 wins at 32.3 min |
 | 7 | Bot 4 wins at 43.1 min |
 | 8 | Bot 5 wins at 63.5 min |
+
+### 2026-11-20 — Port milestone P5 (Bevy client)
+
+| Suite | Passed |
+|---|---|
+| unit tests in `src/` | 50 |
+| `tests/engine_p2.rs` | 10 |
+| `tests/engine_p3.rs` | 16 |
+| `tests/engine_p4.rs` | 4 |
+| **Total** | **80**, 0 failed |
+
+New unit tests: tile ↔ world round trip (picking); player colours distinct and never close to the
+human's blue (RGB distance ≥ 90 for 300 ids); owned tiles tinted, borders darker; click rules
+(spawn on free land only during the spawn phase; afterwards attack free land next to you with
+`floor(troops × size)`, refuse own land); HUD numbers equal the game state (troops, attack size,
+leaderboard count and leader); number formatting.
+
+Manual check (2026-11-20, dev PC): `laukofront --size medium --bots 20 --seed 3 --autoplay` —
+map, territories, borders, HUD, leaderboard and attribution visible; the autoplayed human spawns
+and attacks; screenshot reviewed. A human mouse play-test is part of Stage 16.

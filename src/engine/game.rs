@@ -16,7 +16,7 @@ use super::player::{Player, PlayerId, PlayerInfo, PlayerType};
 use super::rules;
 
 /// Upstream `Execution`: one ongoing piece of simulation (a spawn, a player's economy, an attack).
-pub trait Execution {
+pub trait Execution: Send + Sync {
     /// Called once, at the end of the tick it was added in (or the first tick after the spawn
     /// phase if it is not active during the spawn phase).
     fn init(&mut self, game: &mut Game, ticks: u64);

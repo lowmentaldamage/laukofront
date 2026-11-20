@@ -1,7 +1,7 @@
 # Project status
 
 **Date:** 2026-11-20
-**State:** OpenFront engine port in progress. P0–P4 are done: the engine plays complete bots-only matches. P5 (Bevy client) is next, then boats. Not playable by a human yet.
+**State:** OpenFront engine port P0–P5 done: the game is **playable** against bots (`cargo run --release`). Boats (P6) are next, then the remaining build-guide stages (menus, save, polish, QA, release).
 The game is **not playable yet**: there is no window, map rendering or input. The simulation
 rules work and are tested headless.
 
@@ -26,6 +26,9 @@ rules work and are tested headless.
 - `render`, `input`, `ui`, `menu` modules are empty placeholders.
 
 ## Known issues
+
+- No menu yet: match settings come from the command line (CONTROLS.md).
+- The in-game notice uses "Copyright (c)" until a font with © is added (D30).
 
 - Encirclement is a simplified port (D25); worst single tick ~3 ms on the largest map.
 - No boats yet: players on separate landmasses cannot reach each other (D27, D28).

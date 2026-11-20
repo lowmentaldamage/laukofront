@@ -197,3 +197,29 @@ One entry per decision: date, choice, reason, rejected options.
 - **Date:** 2026-11-20
 - **Choice:** boats (upstream `TransportShipExecution` and water pathfinding) come right after P5.
 - **Reason:** water separates landmasses on most generated maps; without boats matches stall.
+
+## D29. Map drawn as one texture
+- **Date:** 2026-11-20
+- **Choice:** the map is a single RGBA texture (one texel per tile, nearest sampling) on a sprite.
+  Each tick only the tiles that changed owner and their four neighbours are repainted in the CPU
+  copy; Bevy uploads the texture only on ticks with changes.
+- **Reason:** simplest correct renderer for tile maps up to 1.6 M tiles; upstream's WebGL renderer
+  also works per tile. Measured at ~1 250 FPS on the dev PC (PERFORMANCE.md).
+- **Rejected:** the Stage 8 mesh renderer (built for territories, not tiles); a custom shader
+  (more code than needed for now).
+
+## D30. Copyright notice text
+- **Date:** 2026-11-20
+- **Choice:** the in-game notice reads "Copyright (c) OpenFront and Contributors" instead of the
+  © sign.
+- **Reason:** Bevy's built-in font has no © glyph (it rendered as a box). "Copyright" is the legal
+  equivalent. When a font with © is added (Stage 14, with its licence in CREDITS), the notice
+  switches to the exact wording "© OpenFront and Contributors".
+
+## D31. Automated runs do not take keyboard focus
+- **Date:** 2026-11-20
+- **Choice:** with `--perf-run` or `--screenshot`, the window opens unfocused and Bevy runs
+  continuously while unfocused.
+- **Reason:** the first screenshot showed the game paused and panned by keystrokes meant for
+  another window; and unfocused windows are throttled to 60 FPS by default, which hid the real
+  frame time.

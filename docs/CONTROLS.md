@@ -1,34 +1,34 @@
 # Controls
 
-Planned controls (implemented in Stages 8–12). Every key and mouse action.
+Implemented in P5 (`src/input/mod.rs`, `src/render/camera.rs`). Shown in-game in the bottom-right
+help line.
 
 ## Mouse
 
 | Action | Effect |
 |---|---|
-| Left click own territory | select it as the attack source |
-| Left click a neighbour (with a source selected) | attack it with the current send percentage |
-| Left click an invalid target | message explains why (not a neighbour, own territory, too few troops) |
-| Left click empty space / outside the map | clear selection |
+| Left click on unclaimed land (spawn phase) | spawn there (click again to move, until the phase ends) |
+| Left click on a neighbour's land or free land next to you | attack it with the current attack size |
+| Left click elsewhere | a notice says why nothing happened (your land, not a neighbour, water, spawn immunity, not enough troops) |
 | Right drag | pan the camera |
-| Mouse wheel | zoom in/out (0.5×–4×), toward the cursor |
-| Hover | highlight the territory under the cursor |
+| Mouse wheel | zoom toward the cursor (0.5×–24× of "whole map fits") |
+| Hover | bottom-left panel shows the tile's terrain and owner |
 
 ## Keyboard
 
 | Key | Effect |
 |---|---|
 | `W` `A` `S` `D` / arrow keys | pan the camera |
-| `1` | send 25% of spare troops (troops − 1) |
-| `2` | send 50% |
-| `3` | send 100% (all but 1) — default is 50% |
-| `R` | reinforce the selected own territory (200 gold → +25 troops) |
-| `Esc` | clear selection; if nothing is selected, pause and open the pause menu |
+| `1` … `9` | attack size 10% … 90% of your troops (default 20%) |
+| `R` | retreat your newest attack (troops return after 2 s; 25% lost if attacking a player) |
 | `Space` | pause / resume |
 | `F1` / `F2` / `F3` | game speed 1× / 2× / 3× |
-| `F11` | toggle fullscreen |
-| `Home` | centre the camera on your territories |
 
-## Menus
+## Command line (until the menu exists, Stage 12)
 
-Mouse only: Play, Settings, Credits, Quit; match setup fields; end screen Restart / Menu.
+```powershell
+laukofront --size small|medium|large --bots 20 --seed 123
+laukofront --autoplay            # the game plays for you (demo)
+laukofront --perf-run 60         # 1080p frame-time measurement, then exit
+laukofront --screenshot shot.png --screenshot-at 10
+```

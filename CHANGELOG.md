@@ -20,3 +20,5 @@ Versions follow the build guide milestones. `1.0.0` is the finished game.
 - P3: attacks (upstream attackLogic, tile queue), retreat, opposing/merged attacks, spawn immunity,
   defeated-player takeover with gold, encirclement (simplified), 80% win check.
 - P4: bot AI (upstream tribe behaviour, land only); `bot_match` tool.
+- P5: Bevy client — map texture, camera, click to spawn/attack, attack size, retreat, pause, speed,
+  HUD, leaderboard, attribution; `--autoplay`, `--perf-run`, `--screenshot`.

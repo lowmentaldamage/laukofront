@@ -87,8 +87,14 @@ Port of upstream tribe AI (`TribeExecution`, `TribeAttackBehavior`, land parts o
 - An attack sends everything above the reserve. Bots only use the same attacks a human can.
 - Not yet: boat attacks and river crossings (transport ships), alliances and traitors.
 
+## Implemented (P5): playing it
+
+- `cargo run --release` opens a match (Medium map, 20 bots, random seed; see `CONTROLS.md`).
+- Spawn phase: click unclaimed land within 10 s, or you watch the bots.
+- Click land next to your border to attack it with the chosen share of your troops (keys 1-9).
+- HUD: time, troops / cap, gold, share of land, attack size, active attacks; leaderboard of the top
+  10 by land; hover info; notices; help line and the OpenFront attribution.
+
 ## Coming next
 
-- **P5 Bevy client:** the map on screen, clicking to spawn and attack, HUD.
-- **Boats:** without transport ships, players on separate landmasses cannot reach each other; a
-  match can then only end at the 170-minute limit.
+- **Boats (P6):** transport ships, so players on separate landmasses can reach each other.

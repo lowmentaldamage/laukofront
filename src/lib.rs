@@ -3,6 +3,7 @@
 //! - `engine_lib`, `engine`, `config`: the simulation, plain Rust, no Bevy types.
 //! - `render`, `input`, `ui`, `menu`: the Bevy client (milestone P5).
 
+pub mod client;
 pub mod config;
 pub mod engine;
 pub mod engine_lib;

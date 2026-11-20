@@ -7,15 +7,20 @@ laukofront is a Rust port of the **OpenFront** engine (<https://github.com/openf
 **© OpenFront and Contributors.** laukofront is not affiliated with or endorsed by OpenFront.
 See `NOTICE.md`.
 
-**Status:** porting in progress — P0–P4 done: the engine plays full bots-only matches
-(`cargo run --release --bin bot_match`). The Bevy client (P5) is next. Not playable yet. See `PROJECT_STATUS.md`.
+**Status:** playable against bots (port milestones P0–P5). Boats, menus and polish are next.
+See `PROJECT_STATUS.md`. See `PROJECT_STATUS.md`.
 
 ## Quick start (Windows, PowerShell)
 
 ```powershell
+cargo run --release                       # play: Medium map, 20 bots
+cargo run --release -- --size large --bots 50 --seed 7
+cargo run --release -- --autoplay         # watch it play itself
 cargo test
-cargo run --release --bin engine_bench
 ```
+
+Click unclaimed land to spawn, then click land next to your border to attack. Keys 1-9 set the
+attack size, R retreats, Space pauses, F1-F3 change speed. Full list: `docs/CONTROLS.md`.
 
 Full setup from a clean PC: `docs/BUILDING.md`. Smart App Control must be off to build.
 

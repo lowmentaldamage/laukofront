@@ -20,7 +20,7 @@ Milestones in order. Stage numbers refer to the build guide.
 | P2 Players, economy, spawn | **done** — growth/cap/gold match upstream formulas; spawn phase and spawning |
 | P3 Attacks and win | **done** — tile-by-tile conquest (upstream attackLogic), retreat, takeover, encirclement, 80% win |
 | P4 Bots | **done** — tribe AI; bots-only matches reach a winner (by conquest when the map allows, D27) |
-| P5 Bevy client | texture map, click to spawn/attack, HUD |
+| P5 Bevy client | **done** — texture map, click to spawn/attack, keys, HUD, leaderboard |
 | P6 Boats | transport ships and water pathfinding; no more stalled matches (D28) |
 
 ## Future
