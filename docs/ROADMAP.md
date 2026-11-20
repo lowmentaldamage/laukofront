@@ -22,8 +22,8 @@ Milestones in order. Stage numbers refer to the build guide.
 | P4 Bots | **done** — tribe AI; bots-only matches reach a winner (by conquest when the map allows, D27) |
 | P5 Bevy client | **done** — texture map, click to spawn/attack, keys, HUD, leaderboard |
 | P6 Interface | **done** — left HUD, minimap, on-map tutorial, own-land highlight, labels, capture flash, end screen |
-| P7 Boats | transport ships and water routing; no more stalled matches (D28) |
-| P8 Buildings | city, port, factory, defense post, trade ships, trains, build menu |
+| P7 Boats | **done** — transport ships, water routing, boat retreat, bots use boats |
+| P8 Buildings | **done** — city, port, factory, defense post, upgrades, trade ships, factory income, build bar |
 | P9 Warships and nukes | warships, missile silo, atom/hydrogen bomb, MIRV, SAM, fallout |
 | P10 Diplomacy and nations | alliances, embargo, donations, nation AI with difficulty |
 | P11 Maps | richer generator (biomes, rivers, styles) and real-Earth maps from Natural Earth |

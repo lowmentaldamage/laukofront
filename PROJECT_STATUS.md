@@ -1,7 +1,7 @@
 # Project status
 
 **Date:** 2026-11-20
-**State:** playable against bots with a full interface (port milestones P0–P6). Next: boats (P7), then buildings, warships and nukes, diplomacy and nations, maps, menus, save/audio, release (P8–P14; see ROADMAP).
+**State:** playable against bots with boats, buildings and trade (port milestones P0–P8). Next: warships and nukes (P9), diplomacy and AI nations (P10), maps (P11), menus (P12), save/audio (P13), release (P14).
 The game is **not playable yet**: there is no window, map rendering or input. The simulation
 rules work and are tested headless.
 

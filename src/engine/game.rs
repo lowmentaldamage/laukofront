@@ -6,7 +6,7 @@
 //! vectors with a game-wide slot index (each tile has one owner) instead of upstream's `TileSet`,
 //! so iteration order differs; nothing in the rules depends on that order yet.
 
-use std::collections::VecDeque;
+use std::collections::{HashMap, VecDeque};
 
 use crate::config::GameConfig;
 use crate::engine_lib::game_map::{GameMap, TileRef};
@@ -14,6 +14,8 @@ use crate::engine_lib::game_map::{GameMap, TileRef};
 use super::attack::{Attack, AttackId};
 use super::player::{Player, PlayerId, PlayerInfo, PlayerType};
 use super::rules;
+use super::units::{Unit, UnitId, UnitKind};
+use super::water::WaterInfo;
 
 /// Upstream `Execution`: one ongoing piece of simulation (a spawn, a player's economy, an attack).
 pub trait Execution: Send + Sync {
@@ -47,6 +49,9 @@ pub struct Game {
     /// Every attack of the match, by id (inactive ones stay so executions can see they ended).
     attacks: Vec<Attack>,
     winner: Option<PlayerId>,
+    units: Vec<Unit>,
+    structure_at: HashMap<TileRef, UnitId>,
+    water: WaterInfo,
     /// Flood-fill scratch: tile -> generation it was visited in.
     visit_gen: Vec<u32>,
     gen: u32,
@@ -55,6 +60,7 @@ pub struct Game {
 impl Game {
     pub fn new(config: GameConfig, map: GameMap, game_id: impl Into<String>) -> Self {
         let n = map.num_tiles() as usize;
+        let water = WaterInfo::new(&map);
         Self {
             config,
             game_id: game_id.into(),
@@ -69,6 +75,9 @@ impl Game {
             changed_tiles: Vec::new(),
             attacks: Vec::new(),
             winner: None,
+            units: Vec::new(),
+            structure_at: HashMap::new(),
+            water,
             visit_gen: vec![0; n],
             gen: 0,
         }
@@ -206,7 +215,80 @@ impl Game {
                 }
             }
         }
+        // Upstream `shoreReachableNeighbors`: from every 10th coast tile, the land 5 tiles
+        // across the water (rivers and straits up to 4 tiles wide).
+        let mut shore_idx = 0;
+        for &t in &pl.border {
+            if !self.map.is_shore(t) {
+                continue;
+            }
+            shore_idx += 1;
+            if (shore_idx - 1) % 10 != 0 {
+                continue;
+            }
+            let (bx, by) = (self.map.x(t) as i64, self.map.y(t) as i64);
+            for (dx, dy) in [(0, -1), (0, 1), (-1, 0), (1, 0)] {
+                let Some(first) = self.map.tile(bx + dx, by + dy) else {
+                    continue;
+                };
+                if !self.map.is_water(first) {
+                    continue;
+                }
+                let Some(far) = self.map.tile(bx + dx * 5, by + dy * 5) else {
+                    continue;
+                };
+                if !self.map.is_passable_land(far) {
+                    continue;
+                }
+                let o = self.map.owner_id(far);
+                if o == p || (o == 0 && self.map.has_fallout(far)) {
+                    continue;
+                }
+                let entry = (o != 0).then_some(o);
+                if !out.contains(&entry) {
+                    out.push(entry);
+                }
+            }
+        }
         out
+    }
+
+    /// Upstream `Player.canAttack(tile)` (without immunity): an owned tile can be attacked if
+    /// `p` borders its owner; an unowned one if the free land it belongs to (searched up to 200
+    /// tiles away, manhattan) touches `p`'s land.
+    pub fn can_attack_tile(&self, p: PlayerId, tile: TileRef) -> bool {
+        let map = &self.map;
+        if !map.is_valid(tile) || !map.is_passable_land(tile) {
+            return false;
+        }
+        let owner = map.owner_id(tile);
+        if owner == p {
+            return false;
+        }
+        if owner != 0 {
+            return self.shares_border_with(p, Some(owner));
+        }
+        let mut seen = std::collections::HashSet::new();
+        let mut queue = VecDeque::from([tile]);
+        seen.insert(tile);
+        let mut buf = [0; 4];
+        while let Some(t) = queue.pop_front() {
+            let k = map.neighbors4(t, &mut buf);
+            for &nb in &buf[..k] {
+                if map.owner_id(nb) == p {
+                    return true;
+                }
+                if !seen.contains(&nb)
+                    && map.is_passable_land(nb)
+                    && !map.has_owner(nb)
+                    && map.manhattan_dist(nb, tile) <= 200
+                {
+                    seen.insert(nb);
+                    queue.push_back(nb);
+                }
+            }
+        }
+        false
     }
 
     pub fn attack(&self, id: AttackId) -> Option<&Attack> {
@@ -317,6 +399,187 @@ impl Game {
         pieces
     }
 
+    // ----- units -----
+
+    pub fn units(&self) -> &[Unit] {
+        &self.units
+    }
+
+    pub fn unit(&self, id: UnitId) -> Option<&Unit> {
+        self.units.get(id as usize)
+    }
+
+    pub fn unit_mut(&mut self, id: UnitId) -> Option<&mut Unit> {
+        self.units.get_mut(id as usize)
+    }
+
+    pub fn water(&self) -> &WaterInfo {
+        &self.water
+    }
+
+    /// Routes a ship (see `WaterInfo::find_path`).
+    pub fn find_water_path(&mut self, src: TileRef, dst: TileRef) -> Option<Vec<TileRef>> {
+        self.water.find_path(&self.map, src, dst)
+    }
+
+    /// Active units of a player, optionally of one kind.
+    pub fn player_units(
+        &self,
+        p: PlayerId,
+        kind: Option<UnitKind>,
+    ) -> impl Iterator<Item = &Unit> + '_ {
+        let ids: &[UnitId] = self.player(p).map_or(&[], |pl| pl.units.as_slice());
+        ids.iter()
+            .filter_map(move |&id| self.unit(id))
+            .filter(move |u| u.active && kind.is_none_or(|k| u.kind == k))
+    }
+
+    /// Upstream `unitCount`.
+    pub fn unit_count(&self, p: PlayerId, kind: UnitKind) -> usize {
+        self.player_units(p, Some(kind)).count()
+    }
+
+    /// The building on a tile, if any.
+    pub fn structure_at(&self, t: TileRef) -> Option<&Unit> {
+        self.structure_at
+            .get(&t)
+            .and_then(|&id| self.unit(id))
+            .filter(|u| u.active)
+    }
+
+    /// True if `owner` has a finished `kind` building within `range` tiles (euclidean) of `t`.
+    pub fn has_structure_near(
+        &self,
+        t: TileRef,
+        range: u32,
+        kind: UnitKind,
+        owner: PlayerId,
+    ) -> bool {
+        let r2 = (range as u64) * (range as u64);
+        let now = self.ticks;
+        self.player_units(owner, Some(kind))
+            .any(|u| !u.under_construction(now) && self.map.euclidean_dist_squared(u.tile, t) <= r2)
+    }
+
+    /// Any building (of anyone) within `range` tiles (manhattan) of `t`.
+    pub fn any_structure_within(&self, t: TileRef, range: u32) -> bool {
+        self.structure_at.iter().any(|(&st, &id)| {
+            self.unit(id).is_some_and(|u| u.active) && self.map.manhattan_dist(st, t) <= range
+        })
+    }
+
+    /// Upstream `buildUnit`: creates a unit for `owner` (taking `troops` from it).
+    pub(crate) fn build_unit(
+        &mut self,
+        owner: PlayerId,
+        kind: UnitKind,
+        tile: TileRef,
+        troops: f64,
+    ) -> UnitId {
+        let id = self.units.len() as UnitId;
+        let now = self.ticks;
+        let taken = self
+            .player_mut(owner)
+            .map_or(0, |p| p.remove_troops(troops)) as f64;
+        let build_ticks = kind.construction_ticks();
+        self.units.push(Unit {
+            id,
+            kind,
+            owner,
+            tile,
+            active: true,
+            level: 1,
+            under_construction_until: (build_ticks > 0).then_some(now + build_ticks),
+            troops: taken,
+            target_tile: None,
+            path: Vec::new(),
+            path_index: 0,
+            retreating: false,
+        });
+        if kind.is_structure() {
+            self.structure_at.insert(tile, id);
+        }
+        if let Some(p) = self.player_mut(owner) {
+            p.units.push(id);
+        }
+        id
+    }
+
+    /// Upstream `Unit.delete`.
+    pub(crate) fn delete_unit(&mut self, id: UnitId) {
+        let Some(u) = self.units.get_mut(id as usize) else {
+            return;
+        };
+        if !u.active {
+            return;
+        }
+        u.active = false;
+        let (owner, tile, kind) = (u.owner, u.tile, u.kind);
+        if kind.is_structure() && self.structure_at.get(&tile) == Some(&id) {
+            self.structure_at.remove(&tile);
+        }
+        if let Some(p) = self.player_mut(owner) {
+            p.units.retain(|&x| x != id);
+        }
+        self.refresh_city_levels(owner);
+    }
+
+    /// Upstream `captureUnit`: the building changes owner.
+    fn capture_unit(&mut self, id: UnitId, new_owner: PlayerId) {
+        let Some(u) = self.units.get_mut(id as usize) else {
+            return;
+        };
+        let old = u.owner;
+        u.owner = new_owner;
+        if let Some(p) = self.player_mut(old) {
+            p.units.retain(|&x| x != id);
+        }
+        if let Some(p) = self.player_mut(new_owner) {
+            p.units.push(id);
+        }
+        self.refresh_city_levels(old);
+        self.refresh_city_levels(new_owner);
+    }
+
+    /// Recounts a player's finished city levels (troop cap bonus).
+    pub(crate) fn refresh_city_levels(&mut self, p: PlayerId) {
+        let now = self.ticks;
+        let levels: u32 = self
+            .player_units(p, Some(UnitKind::City))
+            .filter(|u| !u.under_construction(now))
+            .map(|u| u.level)
+            .sum();
+        if let Some(pl) = self.player_mut(p) {
+            pl.city_levels = levels;
+        }
+    }
+
+    /// Counts a finished building for cost scaling.
+    pub(crate) fn note_constructed(&mut self, p: PlayerId, kind: UnitKind) {
+        if let Some(i) = UnitKind::BUILDABLE.iter().position(|&k| k == kind) {
+            if let Some(pl) = self.player_mut(p) {
+                pl.constructed[i] += 1;
+            }
+        }
+    }
+
+    /// Buildings on a tile change hands with it: defense posts are destroyed, others captured
+    /// (upstream PlayerExecution structure capture).
+    fn transfer_structure(&mut self, tile: TileRef, new_owner: u16) {
+        let Some(&id) = self.structure_at.get(&tile) else {
+            return;
+        };
+        let Some(u) = self.unit(id) else { return };
+        if !u.active || u.owner == new_owner {
+            return;
+        }
+        if new_owner == 0 || u.kind == UnitKind::DefensePost {
+            self.delete_unit(id);
+        } else {
+            self.capture_unit(id, new_owner);
+        }
+    }
+
     /// Upstream `createAttack`: registers an attack in both players' lists.
     pub(crate) fn create_attack(
         &mut self,
@@ -403,6 +666,7 @@ impl Game {
         pl.last_tile_change = ticks;
         self.update_borders(tile);
         self.changed_tiles.push(tile);
+        self.transfer_structure(tile, owner);
         true
     }
 
@@ -419,6 +683,7 @@ impl Game {
         self.map.set_owner_id(tile, 0);
         self.update_borders(tile);
         self.changed_tiles.push(tile);
+        self.transfer_structure(tile, 0);
         true
     }
 

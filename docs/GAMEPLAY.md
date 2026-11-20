@@ -113,6 +113,40 @@ Port of upstream tribe AI (`TribeExecution`, `TribeAttackBehavior`, land parts o
 - **End screen:** victory, defeat or elimination with time and your best land share; New match
   (next seed), Keep watching, Quit.
 
+## Implemented (P7): boats
+
+- Click land across the water (a neighbour's coast or free land) to send a **transport ship** with
+  the current attack size. It launches from your coast nearest the landing point, sails one tile
+  per tick, lands, takes the landing tile and attacks from there.
+- At most 3 transport ships at sea (`boats.max_transport_ships`). The landing point is the target's
+  coast nearest your click (within 50 tiles) that your coast can reach by water.
+- "retreat" next to a boat in the attacks card turns it home; troops landing back on your own
+  coast lose 25%.
+- Bots use boats too: against neighbours across narrow water (up to 4 tiles, upstream
+  `shoreReachableNeighbors`) and to grab free land 5 tiles across the water. Like upstream's
+  tribes, they do not cross wide oceans (that is what AI nations do, P10).
+
+## Implemented (P8): buildings and economy
+
+| Building | Key | Cost (upstream) | Effect |
+|---|---|---|---|
+| City | Q | 125K, doubling per city, max 1M | +250K max troops per level |
+| Port | E | 125K, doubling per port **or** factory, max 1M | must touch the ocean; trade ships |
+| Factory | F | same count as ports | trains to own cities/ports within 110 tiles pay gold |
+| Defense post | G | 50K, +50K each, max 250K | attacks within 30 tiles: 5x attacker losses, 3x slower |
+
+- Build: press the key or click the bar at the bottom, then click your land (ports snap to the
+  nearest coast tile within 10). Right click or Esc cancels. Buildings need 15 tiles between them.
+- Construction: cities and factories 2 s, ports and defense posts 5 s (a ring fills up).
+- **Upgrade:** click one of your buildings (cities, ports, factories); costs the current price.
+- **Trade:** each port sends a trade ship about every 30 s to another player's port on the same
+  water; on arrival both owners get `75000 / (1 + e^(-0.03 (dist - 300))) + 50 x dist` gold.
+- **Factories:** every 10 s each factory pays 10K per connected city or port (less after 9 stops),
+  times its level; rails are drawn to them.
+- Conquered land takes its buildings: cities, ports and factories change owner, defense posts are
+  destroyed.
+- The gold card shows measured income per second, split into base and trade & factories.
+
 ## Coming next
 
-- **Boats (P7):** transport ships, so players on separate landmasses can reach each other.
+- **P9:** warships, missile silos, nukes, SAM launchers.

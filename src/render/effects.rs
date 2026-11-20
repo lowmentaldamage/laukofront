@@ -131,7 +131,9 @@ fn update_overlay(
         put(t, [0, 0, 0, 0]);
     }
     let dt = time.delta_secs();
-    for (t, owner) in captures.0.drain(..) {
+    // Flash at most ~20 000 new tiles per frame (a sample of mass annexations).
+    let step = (captures.0.len() / 20_000).max(1);
+    for (t, owner) in captures.0.drain(..).step_by(step) {
         flashes.active.push((t, owner, 0.0));
     }
     if flashes.active.len() > MAX_FLASHES {

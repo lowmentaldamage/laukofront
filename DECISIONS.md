@@ -245,3 +245,36 @@ One entry per decision: date, choice, reason, rejected options.
 - **Date:** 2026-11-20
 - **Choice:** `%APPDATA%\laukofront\settings.toml` (or `$HOME/.config/laukofront/`), TOML,
   defaults when missing or broken. Holds `tutorial_done` and `default_attack_ratio` for now.
+
+## D35. Water routing
+- **Date:** 2026-11-20
+- **Choice:** water bodies are labelled once (4-connected). Routes: A* on a coarse grid of 8x8-tile
+  cells, then short weighted-A* legs between water tiles near every 4th coarse cell; full weighted
+  A* only for short routes or if a leg fails. Upstream's hierarchical `AStar.Water*`,
+  `AbstractGraph` and smoothing transformers are not ported line by line.
+- **Reason:** a first plain weighted A* took up to 114 ms for ocean-crossing routes on the Large
+  map (a visible hitch inside a tick); the waypoint version takes at most 1.4 ms on the same 40
+  test routes.
+
+## D36. Simplified trade and trains
+- **Date:** 2026-11-20
+- **Choice:** ports launch a trade ship about every 30 s (ours; upstream uses a spawn-rate
+  formula) to a random other player's port on the same water; gold uses upstream `tradeShipGold`.
+  Factories pay `trainGold("self")` per connected own city/port every 10 s instead of simulating
+  rail networks and moving trains; rails are only drawn.
+- **Reason:** the gold flows and their sizes match upstream closely enough for single player;
+  full rail networks (`RailNetworkImpl`, `TrainExecution`) are a large port for little gain now.
+
+## D37. Bots do not cross oceans
+- **Date:** 2026-11-20
+- **Choice:** as upstream's tribes, bots only send boats to neighbours across narrow water and to
+  free land 5 tiles away. Bots-only matches where survivors sit on different continents still end
+  at the 170-minute limit (seed 1); AI nations (P10) will cross oceans.
+
+## D38. Frame-time guards for mass changes
+- **Date:** 2026-11-20
+- **Choice:** above 50 000 changed tiles in one frame the renderer repaints the whole map once;
+  capture flashes are capped at ~20 000 per frame; bots sample at most ~150 coast tiles per side
+  when picking a boat target.
+- **Reason:** removed 70-100 ms frames seen in 1080p runs during mass annexations and boat
+  planning by large bots.

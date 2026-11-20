@@ -7,6 +7,7 @@
 use crate::engine_lib::random::PseudoRandom;
 
 use super::attack_exec::AttackExecution;
+use super::boats::{can_send_boat, TransportShipExecution};
 use super::game::{Execution, Game};
 use super::player::{PlayerId, PlayerType};
 use super::rules;
@@ -72,14 +73,123 @@ impl AttackBehavior {
         true
     }
 
-    /// Upstream `sendAttack`: land attack if we share a border, otherwise a boat (not ported yet,
-    /// so no attack).
+    /// Upstream `sendAttack`: land attack if we share a border, otherwise a boat.
     fn send_attack(&mut self, game: &mut Game, me: PlayerId, target: Option<PlayerId>) -> bool {
         if game.shares_border_with(me, target) {
-            self.send_land_attack(game, me, target)
-        } else {
-            false
+            return self.send_land_attack(game, me, target);
         }
+        match target {
+            Some(t) => self.send_boat_attack(game, me, t),
+            None => self.send_boat_to_free_land(game, me),
+        }
+    }
+
+    fn record_send(&mut self, game: &Game, troops: f64) {
+        let tick = game.ticks();
+        let already = match self.sent_this_tick {
+            Some((t, s)) if t == tick => s,
+            _ => 0.0,
+        };
+        self.sent_this_tick = Some((tick, already + troops));
+    }
+
+    /// Upstream `sendBoatAttack`: a fifth of home troops to the coast of `target` nearest ours.
+    fn send_boat_attack(&mut self, game: &mut Game, me: PlayerId, target: PlayerId) -> bool {
+        let map = game.map();
+        let Some(t) = game.player(target) else {
+            return false;
+        };
+        let Some(mine) = game.player(me) else {
+            return false;
+        };
+        // Closest pair of coast tiles (sampled) between us and them.
+        let ours: Vec<u32> = mine
+            .border_tiles()
+            .iter()
+            .copied()
+            .filter(|&x| map.is_shore(x))
+            .collect();
+        let theirs: Vec<u32> = t
+            .border_tiles()
+            .iter()
+            .copied()
+            .filter(|&x| map.is_shore(x))
+            .collect();
+        // At most ~150 samples per side, so big empires cost the same as small ones.
+        let sample = |v: &Vec<u32>| -> Vec<u32> {
+            let step = (v.len() / 150).max(1);
+            v.iter().copied().step_by(step).collect()
+        };
+        let (ours, theirs) = (sample(&ours), sample(&theirs));
+        let mut best: Option<(u64, u32)> = None;
+        for &a in &ours {
+            for &b in &theirs {
+                let d = map.euclidean_dist_squared(a, b);
+                if best.is_none_or(|(bd, _)| d < bd) {
+                    best = Some((d, b));
+                }
+            }
+        }
+        let Some((_, landing)) = best else {
+            return false;
+        };
+        if can_send_boat(game, me, landing).is_none() {
+            return false;
+        }
+        let troops = self.home_troops(game, me) / 5.0;
+        if troops < 1.0 {
+            return false;
+        }
+        self.record_send(game, troops);
+        game.add_execution(Box::new(TransportShipExecution::new(
+            me,
+            landing,
+            Some(troops),
+        )));
+        true
+    }
+
+    /// Upstream `sendBoatAttackToNearbyTerraNullius`: from every 10th coast tile, look 5 tiles
+    /// across the water for free land and send an expansion boat there.
+    fn send_boat_to_free_land(&mut self, game: &mut Game, me: PlayerId) -> bool {
+        let map = game.map();
+        let Some(mine) = game.player(me) else {
+            return false;
+        };
+        let shores: Vec<u32> = mine
+            .border_tiles()
+            .iter()
+            .copied()
+            .filter(|&x| map.is_shore(x))
+            .collect();
+        for &b in shores.iter().step_by(10) {
+            let (bx, by) = (map.x(b) as i64, map.y(b) as i64);
+            for (dx, dy) in [(0, -1), (0, 1), (-1, 0), (1, 0)] {
+                let Some(first) = map.tile(bx + dx, by + dy) else {
+                    continue;
+                };
+                if !map.is_water(first) {
+                    continue;
+                }
+                let Some(t) = map.tile(bx + dx * 5, by + dy * 5) else {
+                    continue;
+                };
+                if !map.is_passable_land(t) || map.has_owner(t) || map.has_fallout(t) {
+                    continue;
+                }
+                if can_send_boat(game, me, t).is_none() {
+                    continue;
+                }
+                let troops = self.home_troops(game, me) / 5.0;
+                if troops < 1.0 {
+                    return false;
+                }
+                self.record_send(game, troops);
+                game.add_execution(Box::new(TransportShipExecution::new(me, t, Some(troops))));
+                return true;
+            }
+        }
+        false
     }
 
     /// Upstream `findIncomingAttackPlayer`: the attacker with the largest incoming attack.

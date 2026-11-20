@@ -16,10 +16,11 @@ use bevy::window::{PresentMode, WindowResolution};
 
 use laukofront::client::{ClientPlugin, ClientSettings, CurrentSetup, GameState, PendingIntents};
 use laukofront::config::{GameConfig, MapSize, GAME_CONFIG_PATH};
+use laukofront::engine::units::UnitKind;
 use laukofront::engine::util::spawn_tiles;
 use laukofront::engine::{new_match, Intent, MatchSetup, HUMAN};
 use laukofront::engine_lib::random::PseudoRandom;
-use laukofront::input::{click_action, ClickAction, InputPlugin};
+use laukofront::input::{click_action, click_action_with, ClickAction, InputPlugin};
 use laukofront::render::perf::{record_frames, take_screenshot, PerfRun, ScreenshotRun};
 use laukofront::render::MapRenderPlugin;
 use laukofront::ui::UiPlugin;
@@ -132,6 +133,41 @@ fn autoplay(game: Res<GameState>, mut auto: ResMut<Autoplay>, mut pending: ResMu
                 target,
                 troops: Some(troops),
             });
+        }
+    }
+    // Every 5 s: build something affordable on a random own tile, or send a boat if land
+    // expansion has stalled.
+    if g.ticks().is_multiple_of(50) && !me.tiles().is_empty() {
+        let kinds = [
+            UnitKind::City,
+            UnitKind::Factory,
+            UnitKind::Port,
+            UnitKind::DefensePost,
+        ];
+        let kind = kinds[(g.ticks() / 50) as usize % kinds.len()];
+        let at = me.tiles()[auto.rng.next_int(0, me.tiles().len() as i64) as usize];
+        if let ClickAction::Build { kind, tile } = click_action_with(g, at, 0.3, Some(kind)) {
+            pending.0.push(Intent::Build {
+                player: HUMAN,
+                kind,
+                tile,
+            });
+        }
+        if targets.is_empty() {
+            let n = map.num_tiles();
+            let start = auto.rng.next_int(0, n as i64) as u64;
+            let shore = (0..2_000u64)
+                .map(|i| ((start + i * 7919) % n as u64) as u32)
+                .find(|&t| map.is_shore(t) && g.owner(t) != Some(HUMAN));
+            if let Some(t) = shore {
+                if let ClickAction::Boat { tile, troops } = click_action(g, t, 0.3) {
+                    pending.0.push(Intent::Boat {
+                        player: HUMAN,
+                        tile,
+                        troops: Some(troops),
+                    });
+                }
+            }
         }
     }
 }

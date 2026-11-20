@@ -6,6 +6,7 @@ pub mod camera;
 pub mod effects;
 pub mod palette;
 pub mod perf;
+pub mod units;
 
 use bevy::asset::RenderAssetUsages;
 use bevy::image::ImageSampler;
@@ -33,7 +34,7 @@ impl Plugin for MapRenderPlugin {
     fn build(&self, app: &mut App) {
         app.insert_resource(ClearColor(Color::srgb_u8(10, 12, 16)))
             .init_resource::<camera::CameraZoom>()
-            .add_plugins(effects::EffectsPlugin)
+            .add_plugins((effects::EffectsPlugin, units::UnitsRenderPlugin))
             .add_systems(Startup, (camera::spawn_camera, setup_map))
             .add_systems(Update, camera::camera_controls)
             .add_systems(PostUpdate, (rebuild_map, repaint_changed_tiles).chain())
@@ -146,6 +147,15 @@ fn repaint_changed_tiles(
         return;
     };
     let map = game.0.map();
+    // A mass annexation: one full repaint is cheaper than five paints per changed tile.
+    if changes.0.len() > 50_000 {
+        let all = paint_all(map);
+        if all.len() == data.len() {
+            data.copy_from_slice(&all);
+        }
+        changes.0.clear();
+        return;
+    }
     let mut buf = [0; 4];
     let mut paint = |t: TileRef| {
         let i = t as usize * 4;

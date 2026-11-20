@@ -152,3 +152,26 @@ Same command as P5 (1080p, no vsync, autoplay 3×).
 
 The HUD, labels, minimap and capture overlay cost about 1–1.5 ms per frame (P5: 0.8 ms). Still far
 inside the 16.6 ms / 33 ms budgets on this PC.
+
+### 2026-11-20 — P7 + P8: boats, buildings, trade
+
+**Engine** (`engine_bench --ticks 3000`, random attacks + bot AI with boats + trade + factories):
+
+| Map | Bots | Mean tick (µs) | Max tick (µs) |
+|---|---|---|---|
+| Small | 10 / 50 | 95 / 145 | 1437 / 1576 |
+| Medium | 10 / 50 | 192 / 306 | 2654 / 3675 |
+| Large | 10 / 50 | 304 / 534 | 4017 / 2795 |
+
+**Water routes** (Large map, 40 ocean routes): plain weighted A* up to 114 ms → waypoint routing
+(D35) at most 1.4 ms.
+
+**Frame time** (1080p, no vsync, autoplay 3x building and boating; after the D38 guards):
+
+| Setup | Avg frame | FPS | p99 | Slow frames (> 33 ms) |
+|---|---|---|---|---|
+| Medium, 20 bots | 1.8–2.9 ms | 348–555 | 4.0–5.7 ms | 0–1 per minute |
+| Large, 50 bots | 2.2–3.3 ms | 308–455 | 5.4–6.9 ms | 1–2, all 2–4 s after the match starts |
+
+The remaining slow frames (80–120 ms) happen once at match start (spawning, first labels and first
+ship/building drawings); none were seen during play after the guards.

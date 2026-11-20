@@ -167,3 +167,22 @@ capture flash fades to zero; full repaint has one texel per tile.
 Manual (2026-11-20, dev PC): screenshots after spawn and at 2 minutes reviewed — left HUD, minimap,
 clock/speed buttons, gold border and YOU marker, tutorial bubble, labels; fixed leaderboard rows
 wrapping, oversized labels, and see-through panels.
+
+### 2026-11-20 — Port milestones P7 + P8 (boats, buildings)
+
+| Suite | Passed |
+|---|---|
+| unit tests in `src/` | 67 |
+| `tests/engine_p2.rs` / `p3` / `p4` | 10 / 16 / 4 |
+| `tests/engine_p7_p8.rs` | 13 |
+| **Total** | **110**, 0 failed |
+
+New: water bodies are separate; routes stay on water, pass the only gap, have no corner cuts;
+no route into a lake. Boats cross the sea, land and keep attacking; at most 3 boats; no boat
+without a coast or onto own land; retreating boats come home. Trade gold formula. Building costs
+double and cap; cities add 250K cap only when finished; placement rules (own land, coast for
+ports, 15-tile spacing, gold); buildings captured with their land, defense posts destroyed;
+defense posts slow attacks; upgrades; factory gold (2 cities = 20K per run, exact); ports trade.
+Client click rules: build mode, upgrade by clicking own building, boat across water (this test
+found and fixed a bug: free land anywhere counted as attackable; ported upstream `canAttack`).
+`bot_match` (Small, 10 bots): seeds 2, 3, 5, 6 end by conquest (seed 5 used to stall — boats).

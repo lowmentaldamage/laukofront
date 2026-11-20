@@ -51,6 +51,7 @@ pub enum HudNode {
     PhaseBanner,
     HelpCard,
     HoverPanel,
+    NoticeRow(usize),
 }
 
 #[derive(Component, Clone, Copy, PartialEq, Eq, Debug)]
@@ -62,9 +63,9 @@ pub enum HudBg {
     LeaderRow(usize),
 }
 
-/// Attack ids behind the attack rows, so a row's retreat button knows what to cancel.
+/// What each attack row's retreat button cancels: (id, is_boat).
 #[derive(Resource, Default)]
-pub struct AttackRowIds(pub Vec<Option<u32>>);
+pub struct AttackRowIds(pub Vec<Option<(u32, bool)>>);
 
 pub struct HudPlugin;
 
@@ -214,9 +215,16 @@ fn spawn_hud(mut commands: Commands) {
                             BackgroundColor(Color::srgba(1.0, 0.4, 0.35, 0.25)),
                             observe(
                                 move |_: On<Activate>, ids: Res<AttackRowIds>, mut p: ResMut<PendingIntents>, mut n: ResMut<Notices>| {
-                                    if let Some(Some(attack)) = ids.0.get(i) {
-                                        p.0.push(Intent::CancelAttack { player: HUMAN, attack: *attack });
-                                        n.push("Retreating (25% losses against players)");
+                                    match ids.0.get(i) {
+                                        Some(Some((id, true))) => {
+                                            p.0.push(Intent::CancelBoat { player: HUMAN, unit: *id });
+                                            n.push("Boat turning back (25% lost on landing at home)");
+                                        }
+                                        Some(Some((id, false))) => {
+                                            p.0.push(Intent::CancelAttack { player: HUMAN, attack: *id });
+                                            n.push("Retreating (25% losses against players)");
+                                        }
+                                        _ => {}
                                     }
                                 },
                             ),
@@ -266,7 +274,12 @@ fn spawn_hud(mut commands: Commands) {
             })
             .with_children(|c| {
                 for i in 0..NOTICE_ROWS {
-                    c.spawn(label(HudText::Notice(i), 14.0, TEXT));
+                    c.spawn((
+                        label(HudText::Notice(i), 14.0, TEXT),
+                        Node { padding: UiRect::axes(px(6), px(2)), ..default() },
+                        BackgroundColor(PANEL),
+                        HudNode::NoticeRow(i),
+                    ));
                 }
             });
         });
@@ -379,7 +392,10 @@ fn spawn_hud(mut commands: Commands) {
         .with_children(|c| {
             c.spawn((Text::new("Controls"), font(16.0), TextColor(ACCENT)));
             for line in [
-                "Left click      spawn / attack the land you click",
+                "Left click      spawn / attack / boat across water",
+                "Click own bldg  upgrade it",
+                "Q E F G         build city / port / factory / defense",
+                "Right click     cancel building",
                 "1 - 9           attack size 10% - 90%",
                 "R               retreat newest attack",
                 "Space           pause",
@@ -410,7 +426,9 @@ fn spawn_hud(mut commands: Commands) {
 }
 
 fn attack_row_text(l: &AttackLine) -> String {
-    if l.outgoing {
+    if l.outgoing && l.boat {
+        format!("boat > {}  {}", l.other, fmt_num(l.troops))
+    } else if l.outgoing {
         format!("> {}  {}", l.other, fmt_num(l.troops))
     } else {
         format!("< {}  {}", l.other, fmt_num(l.troops))
@@ -449,7 +467,12 @@ fn update_texts(
     let h = hud_numbers(g);
     let lines = attack_lines(g);
     ids.0 = (0..ATTACK_ROWS)
-        .map(|i| lines.get(i).filter(|l| l.outgoing).map(|l| l.attack))
+        .map(|i| {
+            lines
+                .get(i)
+                .filter(|l| l.outgoing)
+                .map(|l| (l.attack, l.boat))
+        })
         .collect();
     let rows = leaderboard(g, LEADER_ROWS - 1);
     let alive = g.alive_players().count();
@@ -484,7 +507,17 @@ fn update_texts(
             ),
             HudText::GoldSub => (
                 h.as_ref().map_or(String::new(), |h| {
-                    format!("+{} per second", fmt_num(h.gold_per_sec))
+                    let extra = (stats.gold_rate - h.gold_per_sec).max(0.0);
+                    if extra >= 1.0 {
+                        format!(
+                            "+{} per second  ({} base, +{} trade & factories)",
+                            fmt_num(stats.gold_rate),
+                            fmt_num(h.gold_per_sec),
+                            fmt_num(extra)
+                        )
+                    } else {
+                        format!("+{} per second", fmt_num(h.gold_per_sec))
+                    }
                 }),
                 None,
             ),
@@ -570,7 +603,26 @@ fn hover_text(g: &crate::engine::Game, hovered: Option<u32>) -> String {
     };
     let map = g.map();
     let terrain = format!("{:?}", map.terrain_type(t));
-    match g.owner(t).and_then(|o| g.player(o)) {
+    let building = g
+        .units()
+        .iter()
+        .filter(|u| {
+            u.is_active() && u.kind().is_structure() && map.manhattan_dist(u.tile(), t) <= 2
+        })
+        .min_by_key(|u| map.manhattan_dist(u.tile(), t))
+        .map(|u| {
+            if u.under_construction(g.ticks()) {
+                format!(
+                    "  |  {} (building {:.0}%)",
+                    u.kind().name(),
+                    u.construction_progress(g.ticks()) * 100.0
+                )
+            } else {
+                format!("  |  {} level {}", u.kind().name(), u.level())
+            }
+        })
+        .unwrap_or_default();
+    let text = match g.owner(t).and_then(|o| g.player(o)) {
         Some(p) => format!(
             "{terrain} - {}  {} tiles, {} troops",
             if p.id() == HUMAN { "You" } else { p.name() },
@@ -579,11 +631,13 @@ fn hover_text(g: &crate::engine::Game, hovered: Option<u32>) -> String {
         ),
         None if map.is_passable_land(t) => format!("{terrain} - unclaimed"),
         None => terrain,
-    }
+    };
+    text + &building
 }
 
 fn update_nodes(
     game: Res<GameState>,
+    notice_count: Res<Notices>,
     settings: Res<ClientSettings>,
     stats: Res<MatchStats>,
     hovered: Res<Hovered>,
@@ -594,6 +648,7 @@ fn update_nodes(
     let lines = attack_lines(g).len();
     let rows = leaderboard(g, LEADER_ROWS - 1).len();
     let phase = !phase_text(g, &stats).is_empty();
+    let notices = notice_count.0.len().min(NOTICE_ROWS);
     let show = |on: bool| if on { Display::Flex } else { Display::None };
     for (tag, mut node) in nodes.iter_mut() {
         match *tag {
@@ -615,6 +670,7 @@ fn update_nodes(
             HudNode::PhaseBanner => set_display(&mut node, show(phase)),
             HudNode::HelpCard => set_display(&mut node, show(settings.show_help)),
             HudNode::HoverPanel => set_display(&mut node, show(hovered.0.is_some())),
+            HudNode::NoticeRow(i) => set_display(&mut node, show(i < notices)),
         }
     }
 }

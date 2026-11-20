@@ -48,6 +48,8 @@ pub struct GameConfig {
     pub gold: GoldRules,
     pub attack: AttackRules,
     pub attack_logic: AttackLogicRules,
+    pub boats: BoatRules,
+    pub buildings: BuildingRules,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -146,6 +148,39 @@ pub struct AttackLogicRules {
     pub conquer_bot_defender_cutoff_tiles: u32,
     pub cluster_check_ticks: u64,
     pub hard_time_limit_seconds: u64,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct BoatRules {
+    pub max_transport_ships: u32,
+    pub attack_share: f64,
+    pub retreat_malus_percent: f64,
+    pub landing_search_distance: u32,
+    pub trade_ship_interval_ticks: u64,
+    pub trade_gold_scale: f64,
+    pub trade_gold_midpoint: f64,
+    pub trade_gold_per_tile: f64,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct BuildingRules {
+    pub city_troop_increase: f64,
+    pub base_cost: i64,
+    pub max_cost: i64,
+    pub defense_post_cost_step: i64,
+    pub defense_post_max_cost: i64,
+    pub defense_post_range: u32,
+    pub defense_post_defense_bonus: f64,
+    pub defense_post_speed_bonus: f64,
+    pub min_structure_distance: u32,
+    pub factory_interval_ticks: u64,
+    pub factory_station_range: u32,
+    pub train_gold_self: i64,
+    pub train_gold_min: i64,
+    pub train_gold_free_stops: u32,
+    pub train_gold_stop_penalty: i64,
 }
 
 fn err(source: &str, message: impl Into<String>) -> ConfigError {

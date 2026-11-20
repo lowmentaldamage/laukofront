@@ -8,6 +8,7 @@
 //! - `labels`: player names and troop counts on the map, the "YOU" marker
 //! - `endscreen`: victory / defeat panel with restart
 
+pub mod buildbar;
 pub mod endscreen;
 pub mod hud;
 pub mod labels;
@@ -29,6 +30,7 @@ impl Plugin for UiPlugin {
             tutorial::TutorialPlugin,
             labels::LabelsPlugin,
             endscreen::EndScreenPlugin,
+            buildbar::BuildBarPlugin,
         ));
     }
 }
@@ -149,7 +151,10 @@ pub fn leaderboard(game: &Game, n: usize) -> Vec<LeaderRow> {
 /// One line of the attacks card.
 #[derive(Debug, Clone, PartialEq)]
 pub struct AttackLine {
+    /// Attack id, or unit id for boats.
     pub attack: u32,
+    /// A transport ship rather than a land attack.
+    pub boat: bool,
     pub other: String,
     pub troops: f64,
     pub outgoing: bool,
@@ -168,16 +173,32 @@ pub fn attack_lines(game: &Game) -> Vec<AttackLine> {
         if let Some(at) = game.attack(a) {
             out.push(AttackLine {
                 attack: a,
+                boat: false,
                 other: name(at.target()),
                 troops: at.troops(),
                 outgoing: true,
             });
         }
     }
+    for u in game.player_units(HUMAN, Some(crate::engine::units::UnitKind::TransportShip)) {
+        let target = u.target_tile().and_then(|t| game.owner(t));
+        out.push(AttackLine {
+            attack: u.id(),
+            boat: true,
+            other: if u.is_retreating() {
+                "home".to_string()
+            } else {
+                name(target)
+            },
+            troops: u.troops(),
+            outgoing: true,
+        });
+    }
     for a in game.incoming_attacks(HUMAN) {
         if let Some(at) = game.attack(a) {
             out.push(AttackLine {
                 attack: a,
+                boat: false,
                 other: name(Some(at.attacker())),
                 troops: at.troops(),
                 outgoing: false,

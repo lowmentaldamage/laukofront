@@ -45,6 +45,21 @@ impl AttackExecution {
         }
     }
 
+    /// An attack started by troops landing from a boat at `source` (upstream
+    /// `new AttackExecution(troops, attacker, target, dst, false)`): the troops were already taken
+    /// when the boat left, and it is never merged with other attacks.
+    pub fn from_boat(
+        owner: PlayerId,
+        target: Option<PlayerId>,
+        troops: f64,
+        source: TileRef,
+    ) -> Self {
+        let mut e = Self::new(owner, target, Some(troops));
+        e.source_tile = Some(source);
+        e.remove_troops = false;
+        e
+    }
+
     /// The attack this execution drives, once initialised.
     pub fn attack_id(&self) -> Option<AttackId> {
         self.attack
@@ -327,7 +342,14 @@ impl Execution for AttackExecution {
                         is_traitor: false,
                         is_disconnected_teammate: false,
                     }),
-                defender_has_defense_post: false,
+                defender_has_defense_post: self.target.is_some_and(|d| {
+                    game.has_structure_near(
+                        tile,
+                        game.config().buildings.defense_post_range,
+                        super::units::UnitKind::DefensePost,
+                        d,
+                    )
+                }),
                 fallout_ratio: None,
                 border_size,
             };

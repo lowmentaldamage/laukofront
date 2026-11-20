@@ -45,6 +45,8 @@ pub struct ClientSettings {
     pub speed: u32,
     /// Key-help card visible (H).
     pub show_help: bool,
+    /// Building chosen in the build bar; the next map click places it.
+    pub build: Option<crate::engine::units::UnitKind>,
 }
 
 impl Default for ClientSettings {
@@ -54,6 +56,7 @@ impl Default for ClientSettings {
             paused: false,
             speed: 1,
             show_help: false,
+            build: None,
         }
     }
 }
@@ -104,6 +107,10 @@ pub struct MatchStats {
     pub since_spawn: Option<f32>,
     /// The match is over for the human (won, lost or eliminated); shows the end screen.
     pub ended: bool,
+    /// Your measured gold income per second over the last 10 s of game time (base + trade +
+    /// factories).
+    pub gold_rate: f64,
+    gold_history: std::collections::VecDeque<i64>,
 }
 
 /// Restart with the next seed when set (end screen button).
@@ -224,7 +231,18 @@ fn run_tick(
         notices.push_kind(text, kind);
     }
     let land = g.map().num_land_tiles().max(1) as f64;
+    let hz = g.config().game.tick_hz as f64;
     if let Some(me) = g.player(HUMAN) {
+        stats.gold_history.push_back(me.gold());
+        if stats.gold_history.len() > 101 {
+            stats.gold_history.pop_front();
+        }
+        if let (Some(&first), Some(&last)) = (stats.gold_history.front(), stats.gold_history.back())
+        {
+            let n = (stats.gold_history.len() - 1).max(1) as f64;
+            // Spending makes the delta negative; show income only.
+            stats.gold_rate = ((last - first) as f64 / n * hz).max(0.0);
+        }
         stats.peak_land = stats.peak_land.max(me.num_tiles() as f64 / land);
         if me.has_spawned() && !me.is_alive() {
             stats.ended = true;

@@ -61,6 +61,9 @@ pub fn record_frames(
         return;
     }
     run.frames_ms.push(dt * 1000.0);
+    if dt * 1000.0 > 33.0 {
+        println!("perf-run: slow frame {:.1} ms at {:.1} s", dt * 1000.0, run.elapsed);
+    }
     if run.elapsed >= WARMUP_SECS + run.seconds {
         match summarize(&run.frames_ms) {
             Some(s) => println!(

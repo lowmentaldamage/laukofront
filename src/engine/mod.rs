@@ -7,6 +7,7 @@
 
 pub mod attack;
 pub mod attack_exec;
+pub mod boats;
 pub mod bots;
 pub mod clusters;
 pub mod executions;
@@ -14,7 +15,10 @@ pub mod game;
 pub mod player;
 pub mod rules;
 pub mod runner;
+pub mod structures;
+pub mod units;
 pub mod util;
+pub mod water;
 
 pub use game::{Execution, Game};
 pub use player::{Player, PlayerId, PlayerInfo, PlayerType};

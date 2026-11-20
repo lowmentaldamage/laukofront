@@ -78,3 +78,30 @@ retreat_delay_ticks = 20        # upstream: RetreatExecution cancelDelay
 conquer_bot_defender_cutoff_tiles = 100  # upstream: handleDeadDefender threshold
 cluster_check_ticks = 20        # upstream: TICKS_PER_CLUSTER_CALC
 hard_time_limit_seconds = 10200 # upstream: WinCheckExecution HARD_TIME_LIMIT_SECONDS (170 min)
+
+[boats]                         # upstream: TransportShipExecution / boatMaxNumber / boatAttackAmount
+max_transport_ships = 3
+attack_share = 0.2              # default boat load: troops / 5
+retreat_malus_percent = 25.0    # landing back on your own shore costs 25%
+landing_search_distance = 50    # upstream closestReachableShore maxDist
+trade_ship_interval_ticks = 300 # ours: each port launches a trade ship about every 30 s
+trade_gold_scale = 75000.0      # upstream tradeShipGold: scale / (1 + e^(-0.03 (dist - midpoint))) + per_tile * dist
+trade_gold_midpoint = 300.0
+trade_gold_per_tile = 50.0
+
+[buildings]                     # upstream: unitCost / unitInfo / cityTroopIncrease / defensePost*
+city_troop_increase = 250000.0
+base_cost = 125000              # city, port, factory: min(max_cost, 2^count * base_cost)
+max_cost = 1000000
+defense_post_cost_step = 50000  # defense post: min(250000, (count + 1) * 50000)
+defense_post_max_cost = 250000
+defense_post_range = 30
+defense_post_defense_bonus = 5.0
+defense_post_speed_bonus = 3.0
+min_structure_distance = 15     # upstream structureMinDist
+factory_interval_ticks = 100    # ours: each factory runs its trains every 10 s
+factory_station_range = 110     # upstream trainStationMaxRange
+train_gold_self = 10000         # upstream trainGold("self")
+train_gold_min = 5000
+train_gold_free_stops = 9
+train_gold_stop_penalty = 5000

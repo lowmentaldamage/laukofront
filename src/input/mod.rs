@@ -6,6 +6,9 @@ use bevy::prelude::*;
 use bevy::window::PrimaryWindow;
 
 use crate::client::{ClientSettings, GameState, Notices, PendingIntents};
+use crate::engine::boats::can_send_boat;
+use crate::engine::structures::{can_upgrade, placement};
+use crate::engine::units::{UnitId, UnitKind};
 use crate::engine::{Game, Intent, HUMAN};
 use crate::engine_lib::game_map::TileRef;
 use crate::render::camera::MapCamera;
@@ -44,12 +47,41 @@ pub struct Hovered(pub Option<TileRef>);
 #[derive(Debug, Clone, PartialEq)]
 pub enum ClickAction {
     Spawn(TileRef),
-    Attack { target: Option<u16>, troops: f64 },
+    Attack {
+        target: Option<u16>,
+        troops: f64,
+    },
+    /// Send a transport ship at `tile` (across water).
+    Boat {
+        tile: TileRef,
+        troops: f64,
+    },
+    /// Place a building (at the snapped tile).
+    Build {
+        kind: UnitKind,
+        tile: TileRef,
+    },
+    /// Upgrade an own building.
+    Upgrade(UnitId),
     Refuse(&'static str),
 }
 
-/// Decides what a click does. Pure (no Bevy) so it can be tested.
+/// Decides what a click does without a building selected.
 pub fn click_action(game: &Game, tile: TileRef, attack_ratio: f64) -> ClickAction {
+    click_action_with(game, tile, attack_ratio, None)
+}
+
+/// Decides what a click does. Pure (no Bevy) so it can be tested.
+/// - building selected: place it there (ports snap to the coast);
+/// - your own land: upgrade the building you clicked (within 2 tiles), if any;
+/// - a neighbour's land or free land next to you: attack;
+/// - land across the water: send a transport ship.
+pub fn click_action_with(
+    game: &Game,
+    tile: TileRef,
+    attack_ratio: f64,
+    build: Option<UnitKind>,
+) -> ClickAction {
     let map = game.map();
     if game.winner().is_some() {
         return ClickAction::Refuse("The match is over");
@@ -71,15 +103,29 @@ pub fn click_action(game: &Game, tile: TileRef, attack_ratio: f64) -> ClickActio
             "You did not spawn"
         });
     }
+    if let Some(kind) = build {
+        return match placement(game, HUMAN, kind, tile) {
+            Ok(at) => ClickAction::Build { kind, tile: at },
+            Err(why) => ClickAction::Refuse(why),
+        };
+    }
     if !map.is_passable_land(tile) {
-        return ClickAction::Refuse("Boats are not available yet");
+        return ClickAction::Refuse("Click land across the water to send a boat");
     }
     let target = game.owner(tile);
     if target == Some(HUMAN) {
-        return ClickAction::Refuse("That is your land");
-    }
-    if !game.nearby(HUMAN).contains(&target) {
-        return ClickAction::Refuse("You can only attack your neighbours");
+        let own = game
+            .player_units(HUMAN, None)
+            .filter(|u| u.kind().is_structure() && map.manhattan_dist(u.tile(), tile) <= 2)
+            .min_by_key(|u| map.manhattan_dist(u.tile(), tile))
+            .map(|u| u.id());
+        return match own {
+            Some(unit) => match can_upgrade(game, HUMAN, unit) {
+                Ok(_) => ClickAction::Upgrade(unit),
+                Err(why) => ClickAction::Refuse(why),
+            },
+            None => ClickAction::Refuse("That is your land"),
+        };
     }
     if let Some(t) = target {
         if !game.can_attack_player(HUMAN, t) {
@@ -90,7 +136,18 @@ pub fn click_action(game: &Game, tile: TileRef, attack_ratio: f64) -> ClickActio
     if troops < 1.0 {
         return ClickAction::Refuse("Not enough troops");
     }
-    ClickAction::Attack { target, troops }
+    if game.can_attack_tile(HUMAN, tile) {
+        return ClickAction::Attack { target, troops };
+    }
+    if can_send_boat(game, HUMAN, tile).is_some() {
+        return ClickAction::Boat { tile, troops };
+    }
+    if game.unit_count(HUMAN, UnitKind::TransportShip)
+        >= game.config().boats.max_transport_ships as usize
+    {
+        return ClickAction::Refuse("All 3 boats are at sea");
+    }
+    ClickAction::Refuse("Not reachable by land or by boat from your coast")
 }
 
 fn cursor_tile(
@@ -123,20 +180,25 @@ fn track_hover(
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 fn click_map(
     buttons: Res<ButtonInput<MouseButton>>,
     hovered: Res<Hovered>,
     game: Res<GameState>,
-    settings: Res<ClientSettings>,
     mut pending: ResMut<PendingIntents>,
     mut notices: ResMut<Notices>,
     mut actions: ResMut<PlayerActions>,
+    mut settings: ResMut<ClientSettings>,
 ) {
+    if buttons.just_pressed(MouseButton::Right) && settings.build.is_some() {
+        settings.build = None;
+        return;
+    }
     if !buttons.just_pressed(MouseButton::Left) {
         return;
     }
     let Some(tile) = hovered.0 else { return };
-    match click_action(&game.0, tile, settings.attack_ratio) {
+    match click_action_with(&game.0, tile, settings.attack_ratio, settings.build) {
         ClickAction::Spawn(tile) => pending.0.push(Intent::Spawn {
             player: HUMAN,
             tile,
@@ -152,6 +214,31 @@ fn click_map(
                 target,
                 troops: Some(troops),
             })
+        }
+        ClickAction::Boat { tile, troops } => {
+            actions.attacked_land = true;
+            pending.0.push(Intent::Boat {
+                player: HUMAN,
+                tile,
+                troops: Some(troops),
+            });
+            notices.push(format!("Boat launched with {:.0} troops", troops));
+        }
+        ClickAction::Build { kind, tile } => {
+            pending.0.push(Intent::Build {
+                player: HUMAN,
+                kind,
+                tile,
+            });
+            settings.build = None;
+            notices.push(format!("Building a {}", kind.name().to_lowercase()));
+        }
+        ClickAction::Upgrade(unit) => {
+            pending.0.push(Intent::Upgrade {
+                player: HUMAN,
+                unit,
+            });
+            notices.push("Upgrading");
         }
         ClickAction::Refuse(why) => notices.push(why),
     }
@@ -185,6 +272,23 @@ fn keyboard(
     }
     if keys.just_pressed(KeyCode::KeyH) {
         settings.show_help = !settings.show_help;
+    }
+    for (k, kind) in [
+        (KeyCode::KeyQ, UnitKind::City),
+        (KeyCode::KeyE, UnitKind::Port),
+        (KeyCode::KeyF, UnitKind::Factory),
+        (KeyCode::KeyG, UnitKind::DefensePost),
+    ] {
+        if keys.just_pressed(k) {
+            settings.build = if settings.build == Some(kind) {
+                None
+            } else {
+                Some(kind)
+            };
+        }
+    }
+    if keys.just_pressed(KeyCode::Escape) {
+        settings.build = None;
     }
     for (k, speed) in [(KeyCode::F1, 1), (KeyCode::F2, 2), (KeyCode::F3, 3)] {
         if keys.just_pressed(k) {
@@ -243,6 +347,84 @@ mod tests {
             },
         )
         .unwrap()
+    }
+
+    /// Spawned human with lots of gold, after spawn immunity.
+    fn settled() -> (Game, TileRef) {
+        let mut g = game();
+        run_turn(&mut g, &[]);
+        let map = g.map();
+        let spawn = (0..map.num_tiles())
+            .step_by(97)
+            .find(|&t| {
+                spawn_tiles(map, t, 4, true).is_some()
+                    && map.is_ocean_shore(t + 3).then_some(()).is_none()
+            })
+            .unwrap();
+        run_turn(
+            &mut g,
+            &[Intent::Spawn {
+                player: HUMAN,
+                tile: spawn,
+            }],
+        );
+        while g.is_spawn_immunity_active() {
+            run_turn(&mut g, &[]);
+        }
+        g.player_mut(HUMAN).unwrap().add_gold(5_000_000);
+        (g, spawn)
+    }
+
+    #[test]
+    fn build_mode_places_buildings_on_own_land_only() {
+        let (g, spawn) = settled();
+        assert_eq!(
+            click_action_with(&g, spawn, 0.2, Some(UnitKind::City)),
+            ClickAction::Build {
+                kind: UnitKind::City,
+                tile: spawn
+            }
+        );
+        let water = (0..g.map().num_tiles())
+            .find(|&t| g.map().is_water(t))
+            .unwrap();
+        assert!(matches!(
+            click_action_with(&g, water, 0.2, Some(UnitKind::City)),
+            ClickAction::Refuse(_)
+        ));
+    }
+
+    #[test]
+    fn clicking_own_building_upgrades_it() {
+        let (mut g, spawn) = settled();
+        run_turn(
+            &mut g,
+            &[Intent::Build {
+                player: HUMAN,
+                kind: UnitKind::City,
+                tile: spawn,
+            }],
+        );
+        for _ in 0..25 {
+            run_turn(&mut g, &[]);
+        }
+        let city = g.structure_at(spawn).unwrap().id();
+        assert_eq!(click_action(&g, spawn, 0.2), ClickAction::Upgrade(city));
+    }
+
+    #[test]
+    fn clicking_far_land_across_water_sends_a_boat() {
+        let (g, _) = settled();
+        let map = g.map();
+        // Free coast that the human's land does not reach over land, but a boat can.
+        let far = (0..map.num_tiles()).step_by(7).find(|&t| {
+            map.is_shore(t)
+                && !map.has_owner(t)
+                && !g.can_attack_tile(HUMAN, t)
+                && crate::engine::boats::can_send_boat(&g, HUMAN, t).is_some()
+        });
+        let t = far.expect("seed 3 has free coast across the water");
+        assert!(matches!(click_action(&g, t, 0.3), ClickAction::Boat { .. }));
     }
 
     #[test]

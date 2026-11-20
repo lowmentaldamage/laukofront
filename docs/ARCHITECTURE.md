@@ -19,6 +19,10 @@ laukofront ports the OpenFront engine (see `NOTICE.md`). Module names follow ups
 | `engine::attack_exec` | `AttackExecution`, `RetreatExecution`, `WinCheckExecution` | attacks, retreat, win | no |
 | `engine::clusters` | `PlayerExecution.removeClusters` (simplified, D25) | encirclement | no |
 | `engine::bots` | `TribeExecution`, `TribeAttackBehavior`, `AiAttackBehavior` (land) | bot AI | no |
+| `engine::units` | `UnitImpl` (parts) | `Unit`, `UnitKind` | no |
+| `engine::water` | pathfinding (simplified, D35) | water bodies, ship routes | no |
+| `engine::boats` | `TransportShipExecution`, `BoatRetreatExecution`, `TransportShipUtils`, trade (D36) | ships | no |
+| `engine::structures` | `ConstructionExecution`, `UpgradeStructureExecution`, unit costs, factories (D36) | buildings | no |
 | `engine::runner` | `GameRunner.ts`, `ExecutionManager.ts` | match setup, `Intent` → execution | no |
 | `engine::util` | `Util.simpleHash`, `getSpawnTiles` | helpers | no |
 | `client` | — | `GameState` resource, fixed-tick runner, pending intents, changed tiles, settings, notices | yes |

@@ -36,11 +36,24 @@ pub fn max_troops(cfg: &GameConfig, kind: PlayerType, tiles: u32) -> f64 {
     }
 }
 
+/// Upstream `troopCap` with cities: `2 * (tiles^0.6 * 1000 + 50000) + 250000 * city levels`,
+/// then bots divided by 3.
+pub fn troop_cap(cfg: &GameConfig, p: &Player) -> f64 {
+    let t = &cfg.troops;
+    let base = t.cap_multiplier
+        * (pow(p.num_tiles() as f64, t.cap_tile_exponent) * t.cap_tile_coeff + t.cap_base)
+        + cfg.buildings.city_troop_increase * p.city_levels() as f64;
+    match p.kind() {
+        PlayerType::Bot => base / t.bot_cap_divisor,
+        PlayerType::Human | PlayerType::Nation => base,
+    }
+}
+
 /// Upstream `troopIncreaseRate`: `(10 + troops^0.73 / 4) * (1 - troops / cap)`, bots x0.5, never
 /// past the cap. Negative when above the cap (troops then drain toward it).
 pub fn troop_increase_rate(cfg: &GameConfig, p: &Player) -> f64 {
     let t = &cfg.troops;
-    let max = max_troops(cfg, p.kind(), p.num_tiles());
+    let max = troop_cap(cfg, p);
     let troops = p.troops() as f64;
     let mut to_add = t.growth_base + pow(troops, t.growth_exponent) / t.growth_divisor;
     to_add *= 1.0 - troops / max;
@@ -130,8 +143,8 @@ pub fn attack_logic(cfg: &GameConfig, input: &AttackLogicInput) -> Option<Attack
     let l = &cfg.attack_logic;
     let (mut mag, mut tile_cost) = terrain_attack_base(cfg, input.terrain)?;
     if input.defender.is_some() && input.defender_has_defense_post {
-        mag *= DEFENSE_POST_DEFENSE_BONUS;
-        tile_cost *= DEFENSE_POST_SPEED_BONUS;
+        mag *= cfg.buildings.defense_post_defense_bonus;
+        tile_cost *= cfg.buildings.defense_post_speed_bonus;
     }
     if let Some(r) = input.fallout_ratio {
         let fallout = 5.0 - r * 2.0;
@@ -201,10 +214,7 @@ pub fn attack_logic(cfg: &GameConfig, input: &AttackLogicInput) -> Option<Attack
     })
 }
 
-/// Upstream `defensePostDefenseBonus` / `defensePostSpeedBonus` / traitor debuffs. Structures and
-/// alliances are later milestones; these are here so `attack_logic` is complete.
-const DEFENSE_POST_DEFENSE_BONUS: f64 = 5.0;
-const DEFENSE_POST_SPEED_BONUS: f64 = 3.0;
+/// Upstream traitor debuffs (alliances are a later milestone).
 const TRAITOR_DEFENSE_DEBUFF: f64 = 0.5;
 const TRAITOR_SPEED_DEBUFF: f64 = 0.8;
 

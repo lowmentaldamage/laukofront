@@ -25,3 +25,6 @@ Versions follow the build guide milestones. `1.0.0` is the finished game.
 - P6: interface overhaul — left HUD cards, clickable attack size and speed, retreat buttons,
   minimap, on-map tutorial, gold own-land border and YOU marker, map labels, capture flash, end
   screen with restart, notifications, saved settings.
+- P7: transport ships with water routing, boat retreat, bots use boats.
+- P8: cities, ports, factories, defense posts with upstream costs; upgrades; trade ships; factory
+  income; build bar; ship and building icons; measured gold income in the HUD.

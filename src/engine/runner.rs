@@ -7,9 +7,12 @@ use crate::engine_lib::terrain;
 
 use super::attack::AttackId;
 use super::attack_exec::{AttackExecution, RetreatExecution, WinCheckExecution};
+use super::boats::{BoatRetreatExecution, TradeExecution, TransportShipExecution};
 use super::executions::{SpawnExecution, SpawnTimerExecution};
 use super::game::Game;
 use super::player::{PlayerId, PlayerInfo, PlayerType};
+use super::structures::{ConstructionExecution, FactoryExecution, UpgradeExecution};
+use super::units::{UnitId, UnitKind};
 
 /// A player action, as upstream's intents. More kinds arrive with later milestones.
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -25,6 +28,22 @@ pub enum Intent {
     },
     /// Pull back one of the player's attacks (completes after the retreat delay).
     CancelAttack { player: PlayerId, attack: AttackId },
+    /// Send a transport ship to the coast near `tile` (`troops = None`: a fifth of the troops).
+    Boat {
+        player: PlayerId,
+        tile: TileRef,
+        troops: Option<f64>,
+    },
+    /// Turn a transport ship around.
+    CancelBoat { player: PlayerId, unit: UnitId },
+    /// Build a building at (or, for ports, near) `tile`.
+    Build {
+        player: PlayerId,
+        kind: UnitKind,
+        tile: TileRef,
+    },
+    /// Raise a building's level.
+    Upgrade { player: PlayerId, unit: UnitId },
 }
 
 /// What a single-player match is created with.
@@ -52,6 +71,8 @@ pub fn new_match(config: GameConfig, setup: MatchSetup) -> Result<Game, String> 
     debug_assert_eq!(human, HUMAN);
     game.add_execution(Box::new(SpawnTimerExecution::new()));
     game.add_execution(Box::new(WinCheckExecution::new()));
+    game.add_execution(Box::new(TradeExecution::new(setup.seed)));
+    game.add_execution(Box::new(FactoryExecution));
     for i in 1..=setup.bots {
         let id = game.add_player(PlayerInfo::new(
             format!("bot_{i}"),
@@ -79,6 +100,22 @@ pub fn run_turn(game: &mut Game, intents: &[Intent]) {
             }
             Intent::CancelAttack { player, attack } => {
                 game.add_execution(Box::new(RetreatExecution::new(player, attack)));
+            }
+            Intent::Boat {
+                player,
+                tile,
+                troops,
+            } => {
+                game.add_execution(Box::new(TransportShipExecution::new(player, tile, troops)));
+            }
+            Intent::CancelBoat { player, unit } => {
+                game.add_execution(Box::new(BoatRetreatExecution::new(player, unit)));
+            }
+            Intent::Build { player, kind, tile } => {
+                game.add_execution(Box::new(ConstructionExecution::new(player, kind, tile)));
+            }
+            Intent::Upgrade { player, unit } => {
+                game.add_execution(Box::new(UpgradeExecution::new(player, unit)));
             }
         }
     }

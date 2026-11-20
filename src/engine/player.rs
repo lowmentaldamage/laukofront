@@ -3,6 +3,7 @@
 use crate::engine_lib::game_map::TileRef;
 
 use super::attack::AttackId;
+use super::units::UnitId;
 
 /// 1-based small id as upstream: 0 means "nobody" (terra nullius) in the tile state.
 pub type PlayerId = u16;
@@ -53,6 +54,12 @@ pub struct Player {
     pub(crate) incoming: Vec<AttackId>,
     /// Attacks launched (upstream stats `attacks[ATTACK_INDEX_SENT]`); decides conquest gold.
     pub(crate) attacks_sent: u32,
+    /// Ids of this player's units (ships and buildings), active ones only.
+    pub(crate) units: Vec<UnitId>,
+    /// Sum of levels of finished cities (raises the troop cap).
+    pub(crate) city_levels: u32,
+    /// Units of each buildable kind ever finished (upstream `unitsConstructed`, for costs).
+    pub(crate) constructed: [u32; 4],
 }
 
 impl Player {
@@ -69,6 +76,9 @@ impl Player {
             outgoing: Vec::new(),
             incoming: Vec::new(),
             attacks_sent: 0,
+            units: Vec::new(),
+            city_levels: 0,
+            constructed: [0; 4],
         }
     }
 
@@ -133,6 +143,16 @@ impl Player {
     /// Ids of active attacks against this player (all attackers, alive or not).
     pub fn incoming_attack_ids(&self) -> &[AttackId] {
         &self.incoming
+    }
+
+    /// Ids of this player's active units.
+    pub fn units(&self) -> &[UnitId] {
+        &self.units
+    }
+
+    /// Sum of levels of finished cities.
+    pub fn city_levels(&self) -> u32 {
+        self.city_levels
     }
 
     pub fn attacks_sent(&self) -> u32 {

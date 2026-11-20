@@ -156,7 +156,7 @@ fn place_bubble(
             window.width() * 0.5 - 150.0,
             window.height() * 0.35,
         ));
-    let x = anchor.x.clamp(320.0, (window.width() - 400.0).max(320.0));
+    let x = anchor.x.clamp(320.0, (window.width() - 500.0).max(320.0));
     let y = anchor.y.clamp(60.0, (window.height() - 160.0).max(60.0));
     for mut n in bubbles.iter_mut() {
         n.display = if show { Display::Flex } else { Display::None };
