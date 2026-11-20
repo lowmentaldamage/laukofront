@@ -1,7 +1,7 @@
 # Project status
 
 **Date:** 2026-11-20
-**State:** playable against bots with boats, buildings and trade (port milestones P0–P8). Next: warships and nukes (P9), diplomacy and AI nations (P10), maps (P11), menus (P12), save/audio (P13), release (P14).
+**State:** playable against bots with boats, buildings, trade, warships and nukes (port milestones P0–P9). Next: diplomacy and AI nations (P10), maps (P11), menus (P12), save/audio (P13), release (P14).
 The game is **not playable yet**: there is no window, map rendering or input. The simulation
 rules work and are tested headless.
 
@@ -26,6 +26,8 @@ rules work and are tested headless.
 - `render`, `input`, `ui`, `menu` modules are empty placeholders.
 
 ## Known issues
+
+- P9 visuals and frame time not yet checked on screen (window was minimised during the automated run).
 
 - No menu yet: match settings come from the command line (CONTROLS.md).
 - The in-game notice uses "Copyright (c)" until a font with © is added (D30).

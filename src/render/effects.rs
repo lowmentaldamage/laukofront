@@ -7,7 +7,7 @@
 
 use bevy::prelude::*;
 
-use crate::client::{CaptureEvents, GameState, MapRebuild, MatchStats};
+use crate::client::{CaptureEvents, GameState, MapRebuild, MatchStats, WeaponFx};
 use crate::engine::HUMAN;
 use crate::engine_lib::game_map::TileRef;
 
@@ -42,7 +42,7 @@ impl Plugin for EffectsPlugin {
         app.init_resource::<Flashes>()
             .add_systems(Startup, setup_overlay.after(super::setup_map))
             .add_systems(PostUpdate, update_overlay.after(super::rebuild_map))
-            .add_systems(Update, spawn_highlight);
+            .add_systems(Update, (spawn_highlight, weapon_fx));
     }
 }
 
@@ -189,6 +189,37 @@ fn spawn_highlight(
         let alpha = fade * (1.0 - phase);
         gizmos.circle_2d(c, r, Color::srgba(1.0, 0.85, 0.35, alpha));
     }
+}
+
+/// Explosions grow and fade over 0.9 s; SAM and shell shots flash for 0.35 s.
+fn weapon_fx(time: Res<Time>, game: Res<GameState>, mut fx: ResMut<WeaponFx>, mut gizmos: Gizmos) {
+    let dt = time.delta_secs();
+    let map = game.0.map();
+    fx.blasts.retain_mut(|(t, r, age)| {
+        *age += dt;
+        if *age > 0.9 {
+            return false;
+        }
+        let k = *age / 0.9;
+        let c = tile_center(map, *t);
+        let rr = *r as f32 * (0.3 + 0.9 * k);
+        gizmos.circle_2d(c, rr, Color::srgba(1.0, 0.85, 0.3, 1.0 - k));
+        gizmos.circle_2d(c, rr * 0.6, Color::srgba(1.0, 0.4, 0.1, 1.0 - k));
+        true
+    });
+    fx.shots.retain_mut(|(a, b, sam, age)| {
+        *age += dt;
+        if *age > 0.35 {
+            return false;
+        }
+        let col = if *sam {
+            Color::srgba(0.4, 0.9, 1.0, 1.0 - *age / 0.35)
+        } else {
+            Color::srgba(1.0, 1.0, 0.6, 1.0 - *age / 0.35)
+        };
+        gizmos.line_2d(tile_center(map, *a), tile_center(map, *b), col);
+        true
+    });
 }
 
 #[cfg(test)]

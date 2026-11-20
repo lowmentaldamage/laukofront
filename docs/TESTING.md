@@ -186,3 +186,17 @@ defense posts slow attacks; upgrades; factory gold (2 cities = 20K per run, exac
 Client click rules: build mode, upgrade by clicking own building, boat across water (this test
 found and fixed a bug: free land anywhere counted as attackable; ported upstream `canAttack`).
 `bot_match` (Small, 10 bots): seeds 2, 3, 5, 6 end by conquest (seed 5 used to stall — boats).
+
+### 2026-11-20 — Port milestone P9 (warships, missiles, fallout)
+
+**117 passed, 0 failed** (68 unit, 10 / 16 / 4 / 13 / 6 in `engine_p2/p3/p4/p7_p8/p9`).
+
+New: `nuke_death_factor` equals upstream for atom and MIRV; atom bomb needs a silo, costs 750K,
+flies, destroys the centre, leaves fallout inside the inner radius and nothing far away, kills
+troops; hydrogen bomb takes > 10 000 tiles; silo reloads after 90 ticks and level 2 fires two;
+a SAM stops an atom bomb (no damage) but not a MIRV, and MIRVs get 15M dearer; fallout slows
+expansion; a warship sinks a passing boat (no landing) and warships damage each other.
+
+Manual check: not done this time. The game window was minimised by the desktop while another
+program was in front, so screenshots came out 1x1 and frame times would not be meaningful. To
+be repeated when the PC is free (`--autoplay --screenshot`, `--perf-run`).

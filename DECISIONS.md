@@ -278,3 +278,16 @@ One entry per decision: date, choice, reason, rejected options.
   when picking a boat target.
 - **Reason:** removed 70-100 ms frames seen in 1080p runs during mass annexations and boat
   planning by large bots.
+
+## D39. Simplified weapons
+- **Date:** 2026-11-20
+- **Choice:** upstream's numbers are kept (costs, blast radii and the "inner + half of the outer
+  ring" pattern, `nukeDeathFactor`, SAM range formula, silo and SAM cooldowns, warship health,
+  shell damage 200-275, ranges). Simplified: missiles fly straight (upstream: parabolas, only
+  drawn differently); SAMs hit instantly instead of firing a SAM missile that pre-aims; MIRV
+  warheads pick random tiles of the target player within 250 tiles (upstream stages targets);
+  SAMs ignore MIRVs and warheads; warship shells hit instantly within 40 tiles; trade ships are
+  captured within 5 tiles; no veterancy or port healing. Water-converting nukes (a game option
+  upstream) are not ported; nukes leave fallout as upstream's default.
+- **Reason:** the effects on the game (what gets destroyed, how many troops die, what can be
+  stopped) match upstream; the omitted parts are timing and presentation detail.

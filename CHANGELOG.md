@@ -28,3 +28,5 @@ Versions follow the build guide milestones. `1.0.0` is the finished game.
 - P7: transport ships with water routing, boat retreat, bots use boats.
 - P8: cities, ports, factories, defense posts with upstream costs; upgrades; trade ships; factory
   income; build bar; ship and building icons; measured gold income in the HUD.
+- P9: missile silos, SAM launchers, warships, atom and hydrogen bombs, MIRVs, fallout; target
+  preview, explosions, SAM and shell effects, nuke warnings.

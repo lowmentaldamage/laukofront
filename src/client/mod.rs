@@ -31,6 +31,14 @@ pub struct TileChanges(pub Vec<TileRef>);
 #[derive(Resource, Default)]
 pub struct CaptureEvents(pub Vec<(TileRef, PlayerId)>);
 
+/// Short-lived weapon effects collected from ticks: explosions (tile, radius, age) and
+/// shots (from, to, is_sam, age). Ages in seconds; the renderer ages and removes them.
+#[derive(Resource, Default)]
+pub struct WeaponFx {
+    pub blasts: Vec<(TileRef, u32, f32)>,
+    pub shots: Vec<(TileRef, TileRef, bool, f32)>,
+}
+
 /// Set when a new match replaced the old one; the renderer rebuilds its textures.
 #[derive(Resource, Default)]
 pub struct MapRebuild(pub bool);
@@ -47,6 +55,8 @@ pub struct ClientSettings {
     pub show_help: bool,
     /// Building chosen in the build bar; the next map click places it.
     pub build: Option<crate::engine::units::UnitKind>,
+    /// Your warship chosen by clicking it; the next water click moves it.
+    pub selected_ship: Option<crate::engine::units::UnitId>,
 }
 
 impl Default for ClientSettings {
@@ -57,6 +67,7 @@ impl Default for ClientSettings {
             speed: 1,
             show_help: false,
             build: None,
+            selected_ship: None,
         }
     }
 }
@@ -129,6 +140,7 @@ impl Plugin for ClientPlugin {
             .init_resource::<PendingIntents>()
             .init_resource::<TileChanges>()
             .init_resource::<CaptureEvents>()
+            .init_resource::<WeaponFx>()
             .init_resource::<MapRebuild>()
             .init_resource::<ClientSettings>()
             .init_resource::<Notices>()
@@ -150,6 +162,18 @@ struct Before {
     alive: Vec<PlayerId>,
     incoming: Vec<u32>,
     my_tiles: u32,
+    nukes: Vec<u32>,
+}
+
+/// Ids of nukes in flight aimed at the human's land.
+fn nukes_at_me(g: &Game) -> Vec<u32> {
+    g.units()
+        .iter()
+        .filter(|u| u.is_active() && u.kind().is_nuke() && u.owner() != HUMAN)
+        .filter(|u| u.kind() != crate::engine::units::UnitKind::MirvWarhead)
+        .filter(|u| u.target_tile().and_then(|t| g.owner(t)) == Some(HUMAN))
+        .map(|u| u.id())
+        .collect()
 }
 
 fn snapshot(g: &Game) -> Before {
@@ -157,6 +181,7 @@ fn snapshot(g: &Game) -> Before {
         alive: g.alive_players().map(|p| p.id()).collect(),
         incoming: g.incoming_attacks(HUMAN),
         my_tiles: g.player(HUMAN).map_or(0, |p| p.num_tiles()),
+        nukes: nukes_at_me(g),
     }
 }
 
@@ -209,6 +234,7 @@ fn run_tick(
     settings: Res<ClientSettings>,
     mut notices: ResMut<Notices>,
     mut stats: ResMut<MatchStats>,
+    mut fx: ResMut<WeaponFx>,
 ) {
     if settings.paused {
         return;
@@ -219,6 +245,16 @@ fn run_tick(
     let had_winner = g.winner().is_some();
     run_turn(g, &intents);
 
+    for &(t, r) in g.detonations() {
+        fx.blasts.push((t, r, 0.0));
+    }
+    for &(a, b) in g.sam_shots() {
+        fx.shots.push((a, b, true, 0.0));
+        notices.push_kind("A SAM shot down a nuke", NoticeKind::Info);
+    }
+    for &(a, b) in g.shell_shots() {
+        fx.shots.push((a, b, false, 0.0));
+    }
     let map = g.map();
     for &t in g.changed_tiles() {
         changes.0.push(t);
@@ -229,6 +265,20 @@ fn run_tick(
     }
     for (text, kind) in tick_notices(g, &before.alive, &before.incoming, before.my_tiles) {
         notices.push_kind(text, kind);
+    }
+    for id in nukes_at_me(g) {
+        if !before.nukes.contains(&id) {
+            if let Some(u) = g.unit(id) {
+                let who = g.player(u.owner()).map_or("?", |p| p.name());
+                notices.push_kind(
+                    format!(
+                        "{who} launched a {} at you!",
+                        u.kind().name().to_lowercase()
+                    ),
+                    NoticeKind::Danger,
+                );
+            }
+        }
     }
     let land = g.map().num_land_tiles().max(1) as f64;
     let hz = g.config().game.tick_hz as f64;

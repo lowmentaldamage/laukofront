@@ -30,6 +30,15 @@ pub fn build_cost(game: &Game, p: PlayerId, kind: UnitKind) -> i64 {
             let n = count(UnitKind::Port) + count(UnitKind::Factory);
             (b.base_cost << n.min(20)).min(b.max_cost)
         }
+        UnitKind::MissileSilo => b.silo_cost,
+        UnitKind::SamLauncher => {
+            ((count(UnitKind::SamLauncher) as i64 + 1) * b.sam_cost_step).min(b.sam_max_cost)
+        }
+        UnitKind::Warship => {
+            let w = &game.config().weapons;
+            ((game.unit_count(p, UnitKind::Warship) as i64 + 1) * w.warship_cost_step)
+                .min(w.warship_max_cost)
+        }
         UnitKind::DefensePost => ((count(UnitKind::DefensePost) as i64 + 1)
             * b.defense_post_cost_step)
             .min(b.defense_post_max_cost),

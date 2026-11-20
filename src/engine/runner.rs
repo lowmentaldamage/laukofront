@@ -13,6 +13,7 @@ use super::game::Game;
 use super::player::{PlayerId, PlayerInfo, PlayerType};
 use super::structures::{ConstructionExecution, FactoryExecution, UpgradeExecution};
 use super::units::{UnitId, UnitKind};
+use super::weapons::{MoveWarshipExecution, NukeExecution, SamExecution, WarshipExecution};
 
 /// A player action, as upstream's intents. More kinds arrive with later milestones.
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -44,6 +45,20 @@ pub enum Intent {
     },
     /// Raise a building's level.
     Upgrade { player: PlayerId, unit: UnitId },
+    /// Launch an atom bomb, hydrogen bomb or MIRV from the best silo at `tile`.
+    Nuke {
+        player: PlayerId,
+        kind: UnitKind,
+        tile: TileRef,
+    },
+    /// Build a warship at a port; it patrols around `tile` (water).
+    Warship { player: PlayerId, tile: TileRef },
+    /// Send a warship to patrol around `tile`.
+    MoveWarship {
+        player: PlayerId,
+        unit: UnitId,
+        tile: TileRef,
+    },
 }
 
 /// What a single-player match is created with.
@@ -73,6 +88,7 @@ pub fn new_match(config: GameConfig, setup: MatchSetup) -> Result<Game, String> 
     game.add_execution(Box::new(WinCheckExecution::new()));
     game.add_execution(Box::new(TradeExecution::new(setup.seed)));
     game.add_execution(Box::new(FactoryExecution));
+    game.add_execution(Box::new(SamExecution));
     for i in 1..=setup.bots {
         let id = game.add_player(PlayerInfo::new(
             format!("bot_{i}"),
@@ -116,6 +132,15 @@ pub fn run_turn(game: &mut Game, intents: &[Intent]) {
             }
             Intent::Upgrade { player, unit } => {
                 game.add_execution(Box::new(UpgradeExecution::new(player, unit)));
+            }
+            Intent::Nuke { player, kind, tile } => {
+                game.add_execution(Box::new(NukeExecution::new(player, kind, tile)));
+            }
+            Intent::Warship { player, tile } => {
+                game.add_execution(Box::new(WarshipExecution::new(player, tile)));
+            }
+            Intent::MoveWarship { player, unit, tile } => {
+                game.add_execution(Box::new(MoveWarshipExecution::new(player, unit, tile)));
             }
         }
     }

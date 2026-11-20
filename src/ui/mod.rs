@@ -13,6 +13,7 @@ pub mod endscreen;
 pub mod hud;
 pub mod labels;
 pub mod minimap;
+pub mod preview;
 pub mod tutorial;
 
 use bevy::picking::hover::HoverMap;
@@ -31,6 +32,7 @@ impl Plugin for UiPlugin {
             labels::LabelsPlugin,
             endscreen::EndScreenPlugin,
             buildbar::BuildBarPlugin,
+            preview::PreviewPlugin,
         ));
     }
 }

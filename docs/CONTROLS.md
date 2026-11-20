@@ -13,6 +13,8 @@ Implemented in P5–P6 (`src/input/mod.rs`, `src/ui/`, `src/render/camera.rs`). 
 | Left click on one of your buildings | upgrade it (city, port, factory) |
 | Build bar (bottom) / Q E F G, then click your land | build city / port / factory / defense post |
 | Right click (while building) | cancel |
+| Left click your warship, then water | move the warship |
+| Missile chosen (Z / X / C), then click | launch at that tile (blast radius shown under the cursor, enemy SAM ranges in blue) |
 | Left click elsewhere | a notice says why nothing happened |
 | Attack size bar (left panel) | click 10 … 90 to set the attack size |
 | "retreat" next to an attack or boat (left panel) | pull it back |
@@ -33,9 +35,11 @@ Clicks on HUD panels never reach the map.
 | `R` | retreat your newest attack (2 s; 25% lost if attacking a player) |
 | `Space` | pause / resume |
 | `F1` / `F2` / `F3` | game speed 1× / 2× / 3× |
-| `Q` `E` `F` `G` | choose city / port / factory / defense post to build |
+| `Q` `E` `F` `G` `V` `B` | choose city / port / factory / defense post / missile silo / SAM |
+| `N` | warship (click water near your port) |
+| `Z` `X` `C` | atom bomb / hydrogen bomb / MIRV |
 | `H` | show / hide the controls card |
-| `Esc` | cancel building; skip the tutorial |
+| `Esc` | cancel building, missile or warship selection; skip the tutorial |
 
 ## Command line (until the menu exists, P12)
 

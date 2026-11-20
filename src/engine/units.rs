@@ -16,6 +16,13 @@ pub enum UnitKind {
     Port,
     Factory,
     DefensePost,
+    MissileSilo,
+    SamLauncher,
+    Warship,
+    AtomBomb,
+    HydrogenBomb,
+    Mirv,
+    MirvWarhead,
 }
 
 impl UnitKind {
@@ -23,16 +30,31 @@ impl UnitKind {
     pub fn is_structure(self) -> bool {
         matches!(
             self,
-            UnitKind::City | UnitKind::Port | UnitKind::Factory | UnitKind::DefensePost
+            UnitKind::City
+                | UnitKind::Port
+                | UnitKind::Factory
+                | UnitKind::DefensePost
+                | UnitKind::MissileSilo
+                | UnitKind::SamLauncher
+        )
+    }
+
+    /// Missiles in flight.
+    pub fn is_nuke(self) -> bool {
+        matches!(
+            self,
+            UnitKind::AtomBomb | UnitKind::HydrogenBomb | UnitKind::Mirv | UnitKind::MirvWarhead
         )
     }
 
     /// Buildings the player can place from the build menu.
-    pub const BUILDABLE: [UnitKind; 4] = [
+    pub const BUILDABLE: [UnitKind; 6] = [
         UnitKind::City,
         UnitKind::Port,
         UnitKind::Factory,
         UnitKind::DefensePost,
+        UnitKind::MissileSilo,
+        UnitKind::SamLauncher,
     ];
 
     pub fn name(self) -> &'static str {
@@ -43,6 +65,13 @@ impl UnitKind {
             UnitKind::Port => "Port",
             UnitKind::Factory => "Factory",
             UnitKind::DefensePost => "Defense post",
+            UnitKind::MissileSilo => "Missile silo",
+            UnitKind::SamLauncher => "SAM launcher",
+            UnitKind::Warship => "Warship",
+            UnitKind::AtomBomb => "Atom bomb",
+            UnitKind::HydrogenBomb => "Hydrogen bomb",
+            UnitKind::Mirv => "MIRV",
+            UnitKind::MirvWarhead => "MIRV warhead",
         }
     }
 
@@ -51,13 +80,22 @@ impl UnitKind {
         match self {
             UnitKind::City | UnitKind::Factory => 2 * 10,
             UnitKind::Port | UnitKind::DefensePost => 5 * 10,
+            UnitKind::MissileSilo => 10 * 10,
+            UnitKind::SamLauncher => 30 * 10,
             _ => 0,
         }
     }
 
     /// Upstream `upgradable`.
     pub fn upgradable(self) -> bool {
-        matches!(self, UnitKind::City | UnitKind::Port | UnitKind::Factory)
+        matches!(
+            self,
+            UnitKind::City
+                | UnitKind::Port
+                | UnitKind::Factory
+                | UnitKind::MissileSilo
+                | UnitKind::SamLauncher
+        )
     }
 }
 
@@ -77,9 +115,13 @@ pub struct Unit {
     /// Destination (ships).
     pub(crate) target_tile: Option<TileRef>,
     /// Remaining route (ships), next step first.
-    pub(crate) path: Vec<TileRef>,
+    pub path: Vec<TileRef>,
     pub(crate) path_index: usize,
     pub(crate) retreating: bool,
+    /// Warship health (0 for other units).
+    pub(crate) health: i64,
+    /// Ticks at which silo/SAM slots were last used (reload queue).
+    pub(crate) reload: Vec<u64>,
 }
 
 impl Unit {
@@ -109,6 +151,9 @@ impl Unit {
     }
     pub fn is_retreating(&self) -> bool {
         self.retreating
+    }
+    pub fn health(&self) -> i64 {
+        self.health
     }
     /// True while the building is still going up.
     pub fn under_construction(&self, now: u64) -> bool {

@@ -59,7 +59,7 @@ pub struct Player {
     /// Sum of levels of finished cities (raises the troop cap).
     pub(crate) city_levels: u32,
     /// Units of each buildable kind ever finished (upstream `unitsConstructed`, for costs).
-    pub(crate) constructed: [u32; 4],
+    pub(crate) constructed: [u32; 6],
 }
 
 impl Player {
@@ -78,7 +78,7 @@ impl Player {
             attacks_sent: 0,
             units: Vec::new(),
             city_levels: 0,
-            constructed: [0; 4],
+            constructed: [0; 6],
         }
     }
 

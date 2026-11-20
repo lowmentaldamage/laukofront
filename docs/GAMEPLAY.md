@@ -147,6 +147,31 @@ Port of upstream tribe AI (`TribeExecution`, `TribeAttackBehavior`, land parts o
   destroyed.
 - The gold card shows measured income per second, split into base and trade & factories.
 
+## Implemented (P9): warships, missiles, fallout
+
+| Thing | Key | Cost (upstream) | Effect |
+|---|---|---|---|
+| Missile silo | V | 1M | launches missiles; one at a time per level, 9 s reload each |
+| SAM launcher | B | 1.5M, +1.5M each, max 3M | shoots down atom and hydrogen bombs within `150 - 480 / (level + 5)` tiles (70 at level 1); 9 s reload per level |
+| Warship | N | 250K, +250K each, max 1M | built at your port, patrols around the water you clicked |
+| Atom bomb | Z | 750K | all land within 12 tiles, about half up to 30 |
+| Hydrogen bomb | X | 5M | within 80 tiles, about half up to 100 |
+| MIRV | C | 25M + 15M per MIRV launched | 350 warheads (radius 12-18) over the target player's land near the target |
+
+- Missiles fly in a straight line (10 tiles/tick; MIRV 15) from your nearest silo with a free
+  slot. A SAM can shoot one down when it is in range and the missile is within 150 tiles of its
+  launch or target. SAMs cannot stop MIRVs or warheads.
+- **Detonation:** tiles lose their owner and get **fallout** (dark olive). Owners lose
+  `5 x troops / tiles` troops per destroyed tile (warheads use upstream's MIRV formula), and so
+  do their attacks and boats. Every unit in the blast (buildings, ships) is destroyed.
+- **Fallout** makes attacks into it slower and bloodier (`x (5 - 2 x fallout share)`); conquering
+  a tile clears it.
+- **Warships** chase enemy ships within 130 tiles: transport ships are sunk by one shot,
+  warships take 200-275 damage per shot (1000 health, a shot every 2 s within 40 tiles), trade
+  ships within 5 tiles are captured. Click your warship, then water, to move it.
+- You get a warning when a nuke is launched at you, and a notice when a SAM shoots one down.
+
 ## Coming next
 
-- **P9:** warships, missile silos, nukes, SAM launchers.
+- **P10:** alliances, embargoes, donations, and AI nations (with difficulty) that also build,
+  sail and nuke.

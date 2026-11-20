@@ -8,6 +8,8 @@ pub const LAKE: [u8; 4] = [38, 72, 104, 255];
 pub const IMPASSABLE: [u8; 4] = [14, 16, 20, 255];
 /// The human's colour.
 pub const HUMAN_COLOR: [u8; 3] = [70, 140, 255];
+/// Irradiated unowned land after a nuke.
+pub const FALLOUT: [u8; 4] = [74, 82, 38, 255];
 /// Border colour of the human's own land.
 pub const OWN_BORDER: [u8; 4] = [255, 214, 92, 255];
 /// How strongly an owner's colour covers the terrain (0..1).
@@ -72,6 +74,9 @@ pub fn tile_color(map: &GameMap, t: TileRef) -> [u8; 4] {
     let base = terrain_color(map, t);
     let owner = map.owner_id(t);
     if owner == 0 {
+        if map.has_fallout(t) {
+            return FALLOUT;
+        }
         return base;
     }
     let pc = player_color(owner);

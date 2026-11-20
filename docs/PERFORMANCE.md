@@ -175,3 +175,9 @@ inside the 16.6 ms / 33 ms budgets on this PC.
 
 The remaining slow frames (80–120 ms) happen once at match start (spawning, first labels and first
 ship/building drawings); none were seen during play after the guards.
+
+### 2026-11-20 — P9: engine with weapons
+
+`engine_bench --ticks 3000`: mean tick 85-374 µs, max 945-2668 µs across all sizes (no change
+from P8; bots do not use weapons, the SAM check costs nothing without missiles in flight).
+Frame-time run with weapons in use: **pending** (window could not be shown, see TESTING.md).

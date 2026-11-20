@@ -1,6 +1,6 @@
-//! Build bar (bottom centre): one button per building with its key and current cost. Click (or
-//! press the key) to choose, then click your land to build; right click or Esc cancels.
-//! Unaffordable buildings are dimmed.
+//! Build bar (bottom centre): one button per building, warship and missile with its key and
+//! current price. Click (or press the key) to choose, then click the map; right click or Esc
+//! cancels. Things you cannot afford are dimmed.
 
 use bevy::prelude::*;
 use bevy::ui_widgets::{observe, Activate, Button};
@@ -9,13 +9,25 @@ use super::{fmt_num, font, ACCENT, PANEL, TEXT, TEXT_DIM};
 use crate::client::{ClientSettings, GameState};
 use crate::engine::structures::build_cost;
 use crate::engine::units::UnitKind;
-use crate::engine::HUMAN;
+use crate::engine::weapons::nuke_cost;
+use crate::engine::{Game, HUMAN};
 
-pub const KEYS: [(&str, UnitKind); 4] = [
+/// Buildings: key and kind.
+pub const KEYS: [(&str, UnitKind); 6] = [
     ("Q", UnitKind::City),
     ("E", UnitKind::Port),
     ("F", UnitKind::Factory),
     ("G", UnitKind::DefensePost),
+    ("V", UnitKind::MissileSilo),
+    ("B", UnitKind::SamLauncher),
+];
+
+/// Warship and missiles: key and kind.
+pub const MILITARY: [(&str, UnitKind); 4] = [
+    ("N", UnitKind::Warship),
+    ("Z", UnitKind::AtomBomb),
+    ("X", UnitKind::HydrogenBomb),
+    ("C", UnitKind::Mirv),
 ];
 
 #[derive(Component)]
@@ -35,19 +47,44 @@ impl Plugin for BuildBarPlugin {
     }
 }
 
-/// What each building does (shown under the bar while it is selected).
+/// Price of anything in the bar.
+pub fn cost_of(game: &Game, kind: UnitKind) -> i64 {
+    if kind.is_nuke() {
+        nuke_cost(game, kind)
+    } else {
+        build_cost(game, HUMAN, kind)
+    }
+}
+
+fn short_name(kind: UnitKind) -> &'static str {
+    match kind {
+        UnitKind::City => "City",
+        UnitKind::Port => "Port",
+        UnitKind::Factory => "Factory",
+        UnitKind::DefensePost => "Defense",
+        UnitKind::MissileSilo => "Silo",
+        UnitKind::SamLauncher => "SAM",
+        UnitKind::Warship => "Warship",
+        UnitKind::AtomBomb => "Atom",
+        UnitKind::HydrogenBomb => "Hydrogen",
+        UnitKind::Mirv => "MIRV",
+        _ => "",
+    }
+}
+
+/// What each choice does (shown above the bar while it is selected).
 pub fn describe(kind: UnitKind) -> &'static str {
     match kind {
         UnitKind::City => "City: +250K max troops per level.",
-        UnitKind::Port => {
-            "Port: must touch the ocean. Trade ships earn gold for you and the other port."
-        }
-        UnitKind::Factory => {
-            "Factory: trains to your cities and ports within 110 tiles earn gold every 10 s."
-        }
-        UnitKind::DefensePost => {
-            "Defense post: attacks within 30 tiles lose 5x troops and move 3x slower."
-        }
+        UnitKind::Port => "Port: must touch the ocean. Trade ships earn gold for you and the other port.",
+        UnitKind::Factory => "Factory: trains to your cities and ports within 110 tiles earn gold every 10 s.",
+        UnitKind::DefensePost => "Defense post: attacks within 30 tiles lose 5x troops and move 3x slower.",
+        UnitKind::MissileSilo => "Missile silo: launches nukes, one at a time per level (9 s reload).",
+        UnitKind::SamLauncher => "SAM launcher: shoots down atom and hydrogen bombs in its range (circle).",
+        UnitKind::Warship => "Warship: click water near your port. Sinks boats, fights warships, captures trade ships.",
+        UnitKind::AtomBomb => "Atom bomb: destroys a radius of 12-30 tiles. Click any tile. Needs a silo.",
+        UnitKind::HydrogenBomb => "Hydrogen bomb: destroys a radius of 80-100 tiles. Needs a silo.",
+        UnitKind::Mirv => "MIRV: 350 warheads over the target player's land. SAMs cannot stop it.",
         _ => "",
     }
 }
@@ -58,8 +95,8 @@ fn setup(mut commands: Commands) {
             position_type: PositionType::Absolute,
             bottom: px(40),
             left: percent(50),
-            margin: UiRect::left(px(-250)),
-            width: px(500),
+            margin: UiRect::left(px(-340)),
+            width: px(680),
             flex_direction: FlexDirection::Column,
             align_items: AlignItems::Center,
             row_gap: px(4),
@@ -80,22 +117,29 @@ fn setup(mut commands: Commands) {
             ));
             col.spawn((
                 Node {
-                    column_gap: px(6),
-                    padding: UiRect::all(px(6)),
+                    column_gap: px(4),
+                    padding: UiRect::all(px(5)),
                     border_radius: BorderRadius::all(px(8)),
                     ..default()
                 },
                 BackgroundColor(PANEL),
             ))
             .with_children(|bar| {
-                for (key, kind) in KEYS {
+                for (i, (key, kind)) in KEYS.into_iter().chain(MILITARY).enumerate() {
+                    if i == KEYS.len() {
+                        // Gap between buildings and weapons.
+                        bar.spawn(Node {
+                            width: px(8),
+                            ..default()
+                        });
+                    }
                     bar.spawn((
                         Button,
                         Node {
-                            width: px(112),
+                            width: px(62),
                             flex_direction: FlexDirection::Column,
                             align_items: AlignItems::Center,
-                            padding: UiRect::axes(px(6), px(4)),
+                            padding: UiRect::axes(px(3), px(3)),
                             border: UiRect::all(px(1)),
                             border_radius: BorderRadius::all(px(6)),
                             ..default()
@@ -112,14 +156,15 @@ fn setup(mut commands: Commands) {
                         }),
                     ))
                     .with_children(|b| {
+                        b.spawn((Text::new(short_name(kind)), font(11.0), TextColor(TEXT)));
                         b.spawn((
-                            Text::new(format!("{}  [{key}]", kind.name())),
-                            font(13.0),
-                            TextColor(TEXT),
+                            Text::new(format!("[{key}]")),
+                            font(10.0),
+                            TextColor(TEXT_DIM),
                         ));
                         b.spawn((
                             Text::new(""),
-                            font(12.0),
+                            font(11.0),
                             TextColor(ACCENT),
                             BuildCost(kind),
                         ));
@@ -141,7 +186,7 @@ fn update(
     let gold = g.player(HUMAN).map_or(0, |p| p.gold());
     for (b, mut bg, mut border) in buttons.iter_mut() {
         let selected = settings.build == Some(b.0);
-        let afford = gold >= build_cost(g, HUMAN, b.0);
+        let afford = gold >= cost_of(g, b.0);
         bg.0 = if selected {
             ACCENT.with_alpha(0.3)
         } else if afford {
@@ -152,8 +197,8 @@ fn update(
         *border = BorderColor::all(if selected { ACCENT } else { Color::NONE });
     }
     for (c, mut text, mut color) in costs.iter_mut() {
-        let cost = build_cost(g, HUMAN, c.0);
-        let s = format!("{} gold", fmt_num(cost as f64));
+        let cost = cost_of(g, c.0);
+        let s = fmt_num(cost as f64);
         if text.0 != s {
             text.0 = s;
         }
@@ -162,9 +207,12 @@ fn update(
     for (mut text, mut bg) in hint.iter_mut() {
         let s = match settings.build {
             Some(k) => format!(
-                "{}\nClick your land to build. Right click or Esc to cancel.",
+                "{}\nClick the map. Right click or Esc to cancel.",
                 describe(k)
             ),
+            None if settings.selected_ship.is_some() => {
+                "Warship selected: click water to send it there. Esc cancels.".to_string()
+            }
             None => String::new(),
         };
         bg.0 = if s.is_empty() { Color::NONE } else { PANEL };

@@ -105,3 +105,35 @@ train_gold_self = 10000         # upstream trainGold("self")
 train_gold_min = 5000
 train_gold_free_stops = 9
 train_gold_stop_penalty = 5000
+silo_cost = 1000000             # upstream MissileSilo cost (flat)
+sam_cost_step = 1500000         # upstream SAM: min(3M, (count + 1) * 1.5M)
+sam_max_cost = 3000000
+
+[weapons]                       # upstream: unitCost / nukeMagnitudes / nukeSpeed / SAM / warship numbers
+atom_cost = 750000
+hydrogen_cost = 5000000
+mirv_base_cost = 25000000
+mirv_cost_step = 15000000       # per MIRV already launched in the match
+atom_inner = 12
+atom_outer = 30
+hydrogen_inner = 80
+hydrogen_outer = 100
+warhead_inner = 12
+warhead_outer = 18
+nuke_speed = 10                 # tiles per tick (atom, hydrogen)
+mirv_speed = 15
+warhead_count = 350
+mirv_spread = 250               # ours: warheads hit the target's land within this many tiles
+silo_cooldown_ticks = 90        # per missile slot (slots = level)
+sam_cooldown_ticks = 90
+sam_max_range = 150.0           # SAM range = sam_max_range - 480 / (level + 5): 70 at level 1
+nuke_targetable_range = 150     # SAMs can hit a nuke within this distance of its launch or target
+warship_cost_step = 250000      # min(1M, (count + 1) * 250K)
+warship_max_cost = 1000000
+warship_health = 1000
+warship_patrol_range = 100
+warship_target_range = 130
+warship_shot_range = 40         # ours: shells are instant within this range
+warship_shot_interval = 20      # upstream warshipShellAttackRate
+warship_capture_range = 5       # trade ships this close are captured
+shell_damage = 250

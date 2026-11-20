@@ -9,6 +9,7 @@ use crate::client::{ClientSettings, GameState, Notices, PendingIntents};
 use crate::engine::boats::can_send_boat;
 use crate::engine::structures::{can_upgrade, placement};
 use crate::engine::units::{UnitId, UnitKind};
+use crate::engine::weapons::{can_launch, warship_spawn};
 use crate::engine::{Game, Intent, HUMAN};
 use crate::engine_lib::game_map::TileRef;
 use crate::render::camera::MapCamera;
@@ -63,12 +64,28 @@ pub enum ClickAction {
     },
     /// Upgrade an own building.
     Upgrade(UnitId),
+    /// Launch a missile at `tile`.
+    Nuke {
+        kind: UnitKind,
+        tile: TileRef,
+    },
+    /// Build a warship that patrols around `tile`.
+    Warship {
+        tile: TileRef,
+    },
+    /// Select an own warship.
+    SelectWarship(UnitId),
+    /// Move the selected warship.
+    MoveWarship {
+        unit: UnitId,
+        tile: TileRef,
+    },
     Refuse(&'static str),
 }
 
 /// Decides what a click does without a building selected.
 pub fn click_action(game: &Game, tile: TileRef, attack_ratio: f64) -> ClickAction {
-    click_action_with(game, tile, attack_ratio, None)
+    click_action_with(game, tile, attack_ratio, None, None)
 }
 
 /// Decides what a click does. Pure (no Bevy) so it can be tested.
@@ -81,6 +98,7 @@ pub fn click_action_with(
     tile: TileRef,
     attack_ratio: f64,
     build: Option<UnitKind>,
+    selected_ship: Option<UnitId>,
 ) -> ClickAction {
     let map = game.map();
     if game.winner().is_some() {
@@ -104,10 +122,36 @@ pub fn click_action_with(
         });
     }
     if let Some(kind) = build {
+        if kind.is_nuke() {
+            return match can_launch(game, HUMAN, kind, tile) {
+                Ok(_) => ClickAction::Nuke { kind, tile },
+                Err(why) => ClickAction::Refuse(why),
+            };
+        }
+        if kind == UnitKind::Warship {
+            return match warship_spawn(game, HUMAN, tile) {
+                Ok(_) => ClickAction::Warship { tile },
+                Err(why) => ClickAction::Refuse(why),
+            };
+        }
         return match placement(game, HUMAN, kind, tile) {
             Ok(at) => ClickAction::Build { kind, tile: at },
             Err(why) => ClickAction::Refuse(why),
         };
+    }
+    // Your warships: click one to select it, then click water to send it there.
+    let own_ship = game
+        .player_units(HUMAN, Some(UnitKind::Warship))
+        .filter(|u| map.manhattan_dist(u.tile(), tile) <= 3)
+        .min_by_key(|u| map.manhattan_dist(u.tile(), tile))
+        .map(|u| u.id());
+    if let Some(ship) = own_ship {
+        return ClickAction::SelectWarship(ship);
+    }
+    if let Some(ship) = selected_ship.filter(|&s| game.unit(s).is_some_and(|u| u.is_active())) {
+        if map.is_water(tile) {
+            return ClickAction::MoveWarship { unit: ship, tile };
+        }
     }
     if !map.is_passable_land(tile) {
         return ClickAction::Refuse("Click land across the water to send a boat");
@@ -198,7 +242,13 @@ fn click_map(
         return;
     }
     let Some(tile) = hovered.0 else { return };
-    match click_action_with(&game.0, tile, settings.attack_ratio, settings.build) {
+    match click_action_with(
+        &game.0,
+        tile,
+        settings.attack_ratio,
+        settings.build,
+        settings.selected_ship,
+    ) {
         ClickAction::Spawn(tile) => pending.0.push(Intent::Spawn {
             player: HUMAN,
             tile,
@@ -232,6 +282,38 @@ fn click_map(
             });
             settings.build = None;
             notices.push(format!("Building a {}", kind.name().to_lowercase()));
+        }
+        ClickAction::Nuke { kind, tile } => {
+            pending.0.push(Intent::Nuke {
+                player: HUMAN,
+                kind,
+                tile,
+            });
+            settings.build = None;
+            notices.push_kind(
+                format!("{} launched", kind.name()),
+                crate::client::NoticeKind::Warning,
+            );
+        }
+        ClickAction::Warship { tile } => {
+            pending.0.push(Intent::Warship {
+                player: HUMAN,
+                tile,
+            });
+            settings.build = None;
+            notices.push("Warship ordered");
+        }
+        ClickAction::SelectWarship(unit) => {
+            settings.selected_ship = Some(unit);
+            notices.push("Warship selected: click water to send it there");
+        }
+        ClickAction::MoveWarship { unit, tile } => {
+            pending.0.push(Intent::MoveWarship {
+                player: HUMAN,
+                unit,
+                tile,
+            });
+            settings.selected_ship = None;
         }
         ClickAction::Upgrade(unit) => {
             pending.0.push(Intent::Upgrade {
@@ -278,6 +360,12 @@ fn keyboard(
         (KeyCode::KeyE, UnitKind::Port),
         (KeyCode::KeyF, UnitKind::Factory),
         (KeyCode::KeyG, UnitKind::DefensePost),
+        (KeyCode::KeyV, UnitKind::MissileSilo),
+        (KeyCode::KeyB, UnitKind::SamLauncher),
+        (KeyCode::KeyN, UnitKind::Warship),
+        (KeyCode::KeyZ, UnitKind::AtomBomb),
+        (KeyCode::KeyX, UnitKind::HydrogenBomb),
+        (KeyCode::KeyC, UnitKind::Mirv),
     ] {
         if keys.just_pressed(k) {
             settings.build = if settings.build == Some(kind) {
@@ -289,6 +377,7 @@ fn keyboard(
     }
     if keys.just_pressed(KeyCode::Escape) {
         settings.build = None;
+        settings.selected_ship = None;
     }
     for (k, speed) in [(KeyCode::F1, 1), (KeyCode::F2, 2), (KeyCode::F3, 3)] {
         if keys.just_pressed(k) {
@@ -379,7 +468,7 @@ mod tests {
     fn build_mode_places_buildings_on_own_land_only() {
         let (g, spawn) = settled();
         assert_eq!(
-            click_action_with(&g, spawn, 0.2, Some(UnitKind::City)),
+            click_action_with(&g, spawn, 0.2, Some(UnitKind::City), None),
             ClickAction::Build {
                 kind: UnitKind::City,
                 tile: spawn
@@ -389,7 +478,7 @@ mod tests {
             .find(|&t| g.map().is_water(t))
             .unwrap();
         assert!(matches!(
-            click_action_with(&g, water, 0.2, Some(UnitKind::City)),
+            click_action_with(&g, water, 0.2, Some(UnitKind::City), None),
             ClickAction::Refuse(_)
         ));
     }

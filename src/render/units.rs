@@ -132,6 +132,68 @@ fn draw_units(
             UnitKind::TradeShip => {
                 gizmos.circle_2d(c, r * 0.5, col.with_alpha(0.8));
             }
+            UnitKind::MissileSilo => {
+                gizmos.circle_2d(c, r * 1.25, dark);
+                gizmos.circle_2d(c, r * 1.05, col);
+                gizmos.line_2d(c + Vec2::new(-r, -r) * 0.7, c + Vec2::new(r, r) * 0.7, col);
+                gizmos.line_2d(c + Vec2::new(-r, r) * 0.7, c + Vec2::new(r, -r) * 0.7, col);
+            }
+            UnitKind::SamLauncher => {
+                gizmos.rect_2d(Isometry2d::from_translation(c), Vec2::splat(r * 2.2), dark);
+                gizmos.circle_2d(c, r * 0.9, col);
+                gizmos.line_2d(c + Vec2::new(0.0, -r), c + Vec2::new(0.0, r), col);
+                if u.owner() == HUMAN && !u.under_construction(now) {
+                    let range = crate::engine::weapons::sam_range(g, u.level()) as f32;
+                    gizmos.circle_2d(c, range, col.with_alpha(0.18));
+                }
+            }
+            UnitKind::Warship => {
+                let next = u
+                    .remaining_path()
+                    .first()
+                    .copied()
+                    .map(|t| tile_center(map, t));
+                let dir = next
+                    .map(|n| (n - c).normalize_or_zero())
+                    .filter(|d| *d != Vec2::ZERO)
+                    .unwrap_or(Vec2::X);
+                let side = Vec2::new(-dir.y, dir.x);
+                let hull = [
+                    c + dir * r * 1.8,
+                    c + side * r * 0.8,
+                    c - dir * r * 1.4 + side * r * 0.6,
+                    c - dir * r * 1.4 - side * r * 0.6,
+                    c - side * r * 0.8,
+                    c + dir * r * 1.8,
+                ];
+                gizmos.linestrip_2d(hull, col);
+                let hp =
+                    (u.health() as f32 / g.config().weapons.warship_health as f32).clamp(0.0, 1.0);
+                let a = c + Vec2::new(-r * 1.2, r * 1.6);
+                gizmos.line_2d(
+                    a,
+                    a + Vec2::new(r * 2.4 * hp, 0.0),
+                    Color::srgb(0.4, 0.9, 0.4),
+                );
+            }
+            UnitKind::AtomBomb | UnitKind::HydrogenBomb | UnitKind::Mirv => {
+                let red = Color::srgb(1.0, 0.25, 0.2);
+                let size = if u.kind() == UnitKind::AtomBomb {
+                    r * 0.9
+                } else {
+                    r * 1.3
+                };
+                gizmos.circle_2d(c, size, red);
+                if let Some(src) = u.remaining_path().first().or(u.path.first()) {
+                    gizmos.line_2d(tile_center(map, *src), c, red.with_alpha(0.35));
+                }
+                if let Some(t) = u.target_tile() {
+                    gizmos.circle_2d(tile_center(map, t), r * 2.0, red.with_alpha(0.6));
+                }
+            }
+            UnitKind::MirvWarhead => {
+                gizmos.circle_2d(c, r * 0.35, Color::srgb(1.0, 0.4, 0.2));
+            }
         }
         if u.kind().is_structure() {
             if u.under_construction(now) {

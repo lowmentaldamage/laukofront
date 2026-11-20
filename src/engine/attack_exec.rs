@@ -350,7 +350,10 @@ impl Execution for AttackExecution {
                         d,
                     )
                 }),
-                fallout_ratio: None,
+                fallout_ratio: game.map().has_fallout(tile).then(|| {
+                    game.map().num_tiles_with_fallout() as f64
+                        / game.map().num_land_tiles().max(1) as f64
+                }),
                 border_size,
             };
             let Some(result) = rules::attack_logic(game.config(), &input) else {

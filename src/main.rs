@@ -142,16 +142,36 @@ fn autoplay(game: Res<GameState>, mut auto: ResMut<Autoplay>, mut pending: ResMu
             UnitKind::City,
             UnitKind::Factory,
             UnitKind::Port,
+            UnitKind::MissileSilo,
             UnitKind::DefensePost,
         ];
         let kind = kinds[(g.ticks() / 50) as usize % kinds.len()];
         let at = me.tiles()[auto.rng.next_int(0, me.tiles().len() as i64) as usize];
-        if let ClickAction::Build { kind, tile } = click_action_with(g, at, 0.3, Some(kind)) {
+        if let ClickAction::Build { kind, tile } = click_action_with(g, at, 0.3, Some(kind), None) {
             pending.0.push(Intent::Build {
                 player: HUMAN,
                 kind,
                 tile,
             });
+        }
+        // Every 30 s: an atom bomb at the biggest other player's land, if a silo is ready.
+        if g.ticks().is_multiple_of(300) {
+            let enemy = g
+                .alive_players()
+                .filter(|p| p.id() != HUMAN)
+                .max_by_key(|p| p.num_tiles());
+            if let Some(e) = enemy {
+                let tile = e.tiles()[e.tiles().len() / 2];
+                if let ClickAction::Nuke { kind, tile } =
+                    click_action_with(g, tile, 0.3, Some(UnitKind::AtomBomb), None)
+                {
+                    pending.0.push(Intent::Nuke {
+                        player: HUMAN,
+                        kind,
+                        tile,
+                    });
+                }
+            }
         }
         if targets.is_empty() {
             let n = map.num_tiles();

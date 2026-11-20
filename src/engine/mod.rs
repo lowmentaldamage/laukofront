@@ -19,6 +19,7 @@ pub mod structures;
 pub mod units;
 pub mod util;
 pub mod water;
+pub mod weapons;
 
 pub use game::{Execution, Game};
 pub use player::{Player, PlayerId, PlayerInfo, PlayerType};

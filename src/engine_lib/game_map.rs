@@ -35,6 +35,7 @@ pub struct GameMap {
     terrain: Vec<u8>,
     state: Vec<u16>,
     num_land_tiles: u32,
+    num_fallout: u32,
 }
 
 impl GameMap {
@@ -51,6 +52,7 @@ impl GameMap {
             terrain,
             state,
             num_land_tiles,
+            num_fallout: 0,
         })
     }
 
@@ -199,6 +201,22 @@ impl GameMap {
 
     pub fn has_fallout(&self, t: TileRef) -> bool {
         self.state[t as usize] & (1 << FALLOUT_BIT) != 0
+    }
+
+    /// Upstream `setFallout` (keeps the fallout tile count).
+    pub fn set_fallout(&mut self, t: TileRef, on: bool) {
+        let had = self.has_fallout(t);
+        if on && !had {
+            self.state[t as usize] |= 1 << FALLOUT_BIT;
+            self.num_fallout += 1;
+        } else if !on && had {
+            self.state[t as usize] &= !(1 << FALLOUT_BIT);
+            self.num_fallout -= 1;
+        }
+    }
+
+    pub fn num_tiles_with_fallout(&self) -> u32 {
+        self.num_fallout
     }
 
     pub fn has_defense_bonus(&self, t: TileRef) -> bool {

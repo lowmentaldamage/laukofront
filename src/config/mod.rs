@@ -50,6 +50,7 @@ pub struct GameConfig {
     pub attack_logic: AttackLogicRules,
     pub boats: BoatRules,
     pub buildings: BuildingRules,
+    pub weapons: WeaponRules,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -181,6 +182,41 @@ pub struct BuildingRules {
     pub train_gold_min: i64,
     pub train_gold_free_stops: u32,
     pub train_gold_stop_penalty: i64,
+    pub silo_cost: i64,
+    pub sam_cost_step: i64,
+    pub sam_max_cost: i64,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct WeaponRules {
+    pub atom_cost: i64,
+    pub hydrogen_cost: i64,
+    pub mirv_base_cost: i64,
+    pub mirv_cost_step: i64,
+    pub atom_inner: u32,
+    pub atom_outer: u32,
+    pub hydrogen_inner: u32,
+    pub hydrogen_outer: u32,
+    pub warhead_inner: u32,
+    pub warhead_outer: u32,
+    pub nuke_speed: u32,
+    pub mirv_speed: u32,
+    pub warhead_count: u32,
+    pub mirv_spread: u32,
+    pub silo_cooldown_ticks: u64,
+    pub sam_cooldown_ticks: u64,
+    pub sam_max_range: f64,
+    pub nuke_targetable_range: u32,
+    pub warship_cost_step: i64,
+    pub warship_max_cost: i64,
+    pub warship_health: i64,
+    pub warship_patrol_range: u32,
+    pub warship_target_range: u32,
+    pub warship_shot_range: u32,
+    pub warship_shot_interval: u64,
+    pub warship_capture_range: u32,
+    pub shell_damage: i64,
 }
 
 fn err(source: &str, message: impl Into<String>) -> ConfigError {

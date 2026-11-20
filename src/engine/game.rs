@@ -49,6 +49,14 @@ pub struct Game {
     /// Every attack of the match, by id (inactive ones stay so executions can see they ended).
     attacks: Vec<Attack>,
     winner: Option<PlayerId>,
+    /// MIRVs launched this match (raises the MIRV price).
+    pub(crate) mirvs_launched: u32,
+    /// Nuke explosions this tick (tile, outer radius), for the renderer.
+    detonations: Vec<(TileRef, u32)>,
+    /// SAM interceptions this tick (SAM tile, nuke tile), for the renderer.
+    sam_shots: Vec<(TileRef, TileRef)>,
+    /// Warship shots this tick (from, to).
+    shell_shots: Vec<(TileRef, TileRef)>,
     units: Vec<Unit>,
     structure_at: HashMap<TileRef, UnitId>,
     water: WaterInfo,
@@ -75,6 +83,10 @@ impl Game {
             changed_tiles: Vec::new(),
             attacks: Vec::new(),
             winner: None,
+            mirvs_launched: 0,
+            detonations: Vec::new(),
+            sam_shots: Vec::new(),
+            shell_shots: Vec::new(),
             units: Vec::new(),
             structure_at: HashMap::new(),
             water,
@@ -495,6 +507,8 @@ impl Game {
             path: Vec::new(),
             path_index: 0,
             retreating: false,
+            health: if kind == UnitKind::Warship { 1000 } else { 0 },
+            reload: Vec::new(),
         });
         if kind.is_structure() {
             self.structure_at.insert(tile, id);
@@ -525,7 +539,7 @@ impl Game {
     }
 
     /// Upstream `captureUnit`: the building changes owner.
-    fn capture_unit(&mut self, id: UnitId, new_owner: PlayerId) {
+    pub(crate) fn capture_unit(&mut self, id: UnitId, new_owner: PlayerId) {
         let Some(u) = self.units.get_mut(id as usize) else {
             return;
         };
@@ -577,6 +591,41 @@ impl Game {
             self.delete_unit(id);
         } else {
             self.capture_unit(id, new_owner);
+        }
+    }
+
+    /// Nuke explosions during the last tick: (tile, outer radius).
+    pub fn detonations(&self) -> &[(TileRef, u32)] {
+        &self.detonations
+    }
+
+    /// SAM interceptions during the last tick: (SAM tile, nuke tile).
+    pub fn sam_shots(&self) -> &[(TileRef, TileRef)] {
+        &self.sam_shots
+    }
+
+    /// Warship shots during the last tick: (warship tile, target tile).
+    pub fn shell_shots(&self) -> &[(TileRef, TileRef)] {
+        &self.shell_shots
+    }
+
+    pub(crate) fn record_detonation(&mut self, t: TileRef, r: u32) {
+        self.detonations.push((t, r));
+    }
+
+    pub(crate) fn record_sam_shot(&mut self, from: TileRef, to: TileRef) {
+        self.sam_shots.push((from, to));
+    }
+
+    pub(crate) fn record_shell(&mut self, from: TileRef, to: TileRef) {
+        self.shell_shots.push((from, to));
+    }
+
+    /// Sets or clears fallout on a tile and reports it as changed (for the renderer).
+    pub(crate) fn set_fallout(&mut self, t: TileRef, on: bool) {
+        if self.map.has_fallout(t) != on {
+            self.map.set_fallout(t, on);
+            self.changed_tiles.push(t);
         }
     }
 
@@ -658,6 +707,7 @@ impl Game {
             self.remove_tile_from(prev, tile);
         }
         self.map.set_owner_id(tile, owner);
+        self.map.set_fallout(tile, false);
         let ticks = self.ticks;
         let slot = &mut self.tile_slot[tile as usize];
         let pl = &mut self.players[owner as usize - 1];
@@ -725,6 +775,9 @@ impl Game {
     /// then advance the tick counter.
     pub fn execute_next_tick(&mut self) {
         self.changed_tiles.clear();
+        self.detonations.clear();
+        self.sam_shots.clear();
+        self.shell_shots.clear();
         let ticks = self.ticks;
 
         let mut execs = std::mem::take(&mut self.execs);
