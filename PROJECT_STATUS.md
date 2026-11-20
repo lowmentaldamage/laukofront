@@ -27,7 +27,7 @@ rules work and are tested headless.
 
 ## Known issues
 
-- P9 visuals and frame time not yet checked on screen (window was minimised during the automated run).
+- Long notices wrap onto two lines; map labels show faintly through the leaderboard panel.
 
 - No menu yet: match settings come from the command line (CONTROLS.md).
 - The in-game notice uses "Copyright (c)" until a font with © is added (D30).

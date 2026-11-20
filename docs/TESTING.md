@@ -197,6 +197,7 @@ troops; hydrogen bomb takes > 10 000 tiles; silo reloads after 90 ticks and leve
 a SAM stops an atom bomb (no damage) but not a MIRV, and MIRVs get 15M dearer; fallout slows
 expansion; a warship sinks a passing boat (no landing) and warships damage each other.
 
-Manual check: not done this time. The game window was minimised by the desktop while another
-program was in front, so screenshots came out 1x1 and frame times would not be meaningful. To
-be repeated when the PC is free (`--autoplay --screenshot`, `--perf-run`).
+Manual check (later the same day, PC free): autoplay screenshot shows the left HUD with
+attacks and retreat buttons, the build bar with the weapons group and prices, defense-post icons,
+labels and minimap. Frame-time runs: 0 frames over 33 ms (see PERFORMANCE.md). Cosmetic issues
+noted: long notices wrap onto two lines; map labels show faintly through the leaderboard panel.

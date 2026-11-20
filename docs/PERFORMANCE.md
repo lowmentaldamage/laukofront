@@ -180,4 +180,12 @@ ship/building drawings); none were seen during play after the guards.
 
 `engine_bench --ticks 3000`: mean tick 85-374 µs, max 945-2668 µs across all sizes (no change
 from P8; bots do not use weapons, the SAM check costs nothing without missiles in flight).
-Frame-time run with weapons in use: **pending** (window could not be shown, see TESTING.md).
+Frame-time run (`--autoplay --perf-run 60`, 1440x900, autoplay builds silos and launches an
+atom bomb every 300 ticks):
+
+| Map | Bots | Avg | FPS | p99 | Max | Frames > 33 ms |
+|---|---|---|---|---|---|---|
+| medium | 20 | 1.65 ms | 605 | 3.20 ms | 6.07 ms | 0 |
+| large | 50 | 2.11 ms | 474 | 4.88 ms | 6.52 ms | 0 |
+
+No slow frames at all, including at match start (the P8 start-up spikes are gone).
