@@ -17,3 +17,5 @@ Versions follow the build guide milestones. `1.0.0` is the finished game.
 - P1: ported PRNG, DetMath, tile map; own terrain generator; `map_preview`.
 - P2: players, spawn phase and spawning, troop growth and gold (upstream formulas); `engine_bench`;
   old territory sim removed.
+- P3: attacks (upstream attackLogic, tile queue), retreat, opposing/merged attacks, spawn immunity,
+  defeated-player takeover with gold, encirclement (simplified), 80% win check.

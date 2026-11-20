@@ -7,8 +7,8 @@ laukofront is a Rust port of the **OpenFront** engine (<https://github.com/openf
 **© OpenFront and Contributors.** laukofront is not affiliated with or endorsed by OpenFront.
 See `NOTICE.md`.
 
-**Status:** porting in progress — P0–P2 done (engine lib, players, spawn, economy); attacks,
-bots and the Bevy client are next. Not playable yet. See `PROJECT_STATUS.md`.
+**Status:** porting in progress — P0–P3 done (engine lib, players, spawn, economy, attacks,
+win check); bots and the Bevy client are next. Not playable yet. See `PROJECT_STATUS.md`.
 
 ## Quick start (Windows, PowerShell)
 

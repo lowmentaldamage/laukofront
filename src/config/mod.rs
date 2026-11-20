@@ -47,6 +47,7 @@ pub struct GameConfig {
     pub troops: TroopRules,
     pub gold: GoldRules,
     pub attack: AttackRules,
+    pub attack_logic: AttackLogicRules,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -116,6 +117,35 @@ pub struct GoldRules {
 pub struct AttackRules {
     pub human_default_percent: u32,
     pub bot_default_percent: u32,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct AttackLogicRules {
+    pub plains_mag: f64,
+    pub plains_cost: f64,
+    pub highland_mag: f64,
+    pub highland_cost: f64,
+    pub mountain_mag: f64,
+    pub mountain_cost: f64,
+    pub large_territory_midpoint: f64,
+    pub large_territory_steepness: f64,
+    pub large_attacker_depth: f64,
+    pub large_defender_depth: f64,
+    pub large_attacker_speed_depth: f64,
+    pub bot_defender_loss_mult: f64,
+    pub terra_nullius_cost_scale: f64,
+    pub terra_nullius_min_cost: f64,
+    pub terra_nullius_max_cost: f64,
+    pub attacker_loss_base: f64,
+    pub cheapest_troop_ratio: f64,
+    pub attacker_loss_per_density: f64,
+    pub speed_cost_divisor: f64,
+    pub retreat_malus_percent: f64,
+    pub retreat_delay_ticks: u64,
+    pub conquer_bot_defender_cutoff_tiles: u32,
+    pub cluster_check_ticks: u64,
+    pub hard_time_limit_seconds: u64,
 }
 
 fn err(source: &str, message: impl Into<String>) -> ConfigError {
@@ -208,6 +238,17 @@ impl GameConfig {
                 && (1..=100).contains(&a.bot_default_percent),
             s,
             "attack.*_default_percent must be 1..=100",
+        )?;
+        let l = &self.attack_logic;
+        check(
+            l.speed_cost_divisor > 0.0 && l.large_territory_midpoint > 1.0,
+            s,
+            "attack_logic.speed_cost_divisor and large_territory_midpoint must be positive",
+        )?;
+        check(
+            l.cluster_check_ticks >= 1,
+            s,
+            "attack_logic.cluster_check_ticks must be at least 1",
         )?;
         Ok(())
     }

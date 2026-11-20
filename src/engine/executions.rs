@@ -7,6 +7,7 @@
 use crate::engine_lib::game_map::TileRef;
 use crate::engine_lib::random::PseudoRandom;
 
+use super::clusters;
 use super::game::{Execution, Game};
 use super::player::{PlayerId, PlayerType};
 use super::rules;
@@ -168,6 +169,7 @@ impl Execution for SpawnExecution {
 pub struct PlayerExecution {
     player: PlayerId,
     active: bool,
+    last_calc: i64,
 }
 
 impl PlayerExecution {
@@ -175,14 +177,22 @@ impl PlayerExecution {
         Self {
             player,
             active: true,
+            last_calc: 0,
         }
     }
 }
 
 impl Execution for PlayerExecution {
-    fn init(&mut self, _game: &mut Game, _ticks: u64) {}
+    fn init(&mut self, game: &mut Game, ticks: u64) {
+        // Upstream staggers each player's cluster check by a hash of its id.
+        let every = game.config().attack_logic.cluster_check_ticks as i64;
+        let offset = game
+            .player(self.player)
+            .map_or(0, |p| simple_hash(&p.info().id) % every);
+        self.last_calc = ticks as i64 + offset;
+    }
 
-    fn tick(&mut self, game: &mut Game, _ticks: u64) {
+    fn tick(&mut self, game: &mut Game, ticks: u64) {
         let Some(p) = game.player(self.player) else {
             self.active = false;
             return;
@@ -196,6 +206,17 @@ impl Execution for PlayerExecution {
         if let Some(p) = game.player_mut(self.player) {
             p.add_troops(inc);
             p.add_gold(gold);
+        }
+
+        let every = game.config().attack_logic.cluster_check_ticks as i64;
+        let Some(p) = game.player(self.player) else {
+            return;
+        };
+        if (ticks as i64 - self.last_calc > every || p.num_tiles() < 100)
+            && p.last_tile_change() as i64 >= self.last_calc
+        {
+            self.last_calc = ticks as i64;
+            clusters::remove_clusters(game, self.player);
         }
     }
 

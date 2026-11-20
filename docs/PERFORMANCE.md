@@ -87,3 +87,25 @@ bot spawns. Ticks contain only spawn-phase bookkeeping and per-player economy; a
 | Large | 1600000 | 50 | 159.8 | 385000 | 2.60 | 11.90 |
 
 Far inside the 2 ms tick budget; the real cost will be attacks (P3).
+
+### 2026-11-20 — Port milestone P3: engine_bench with attacks
+
+`cargo run --release --bin engine_bench -- --ticks 3000` (seed 1). Every 10 ticks each living
+player launches a default attack at a random player or unowned land.
+
+| Map | Tiles | Bots | Setup (ms) | Ticks/s | Mean tick (µs) | Max tick (µs) | Owned tiles at end |
+|---|---|---|---|---|---|---|---|
+| Small | 400000 | 0 | 29.9 | 82056 | 12.19 | 394.90 | 35920 |
+| Small | 400000 | 10 | 30.5 | 12657 | 79.01 | 823.00 | 199068 |
+| Small | 400000 | 50 | 30.5 | 10011 | 99.89 | 1226.70 | 199068 |
+| Medium | 900000 | 0 | 67.3 | 89797 | 11.14 | 506.90 | 35604 |
+| Medium | 900000 | 10 | 67.2 | 5822 | 171.75 | 1925.50 | 447834 |
+| Medium | 900000 | 50 | 67.9 | 5079 | 196.91 | 1965.70 | 447834 |
+| Large | 1600000 | 0 | 119.9 | 97557 | 10.25 | 335.50 | 35421 |
+| Large | 1600000 | 10 | 118.8 | 3694 | 270.72 | 3059.40 | 756141 |
+| Large | 1600000 | 50 | 197.5 | 2359 | 423.85 | 3037.20 | 796035 |
+
+- Mean tick 0.01–0.42 ms: well under the 2 ms target in every case.
+- Worst single tick: 1.2 ms (Small), 2.0 ms (Medium), 3.1 ms (Large). At 10 Hz a 3 ms tick is
+  still far from a 33 ms frame, but it is the first number near the budget. Likely cause: the
+  simplified encirclement check flood-fills whole territories (D25). Recorded as a Stage 15 item.

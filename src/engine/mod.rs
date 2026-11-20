@@ -1,9 +1,13 @@
 //! Ports of upstream `packages/engine`: the simulation. No Bevy types, no wall-clock time,
 //! no `unwrap()` outside tests.
 //!
-//! Ported so far (P2): players, rule formulas, tile conquest with border tracking, the execution
-//! loop with the spawn phase, spawning, and per-player economy.
+//! Ported so far: players, rule formulas, tile conquest with border tracking, the execution loop
+//! with the spawn phase, spawning, per-player economy (P2); attacks, retreat, defeated-player
+//! takeover, encircled-territory annexation and the win check (P3).
 
+pub mod attack;
+pub mod attack_exec;
+pub mod clusters;
 pub mod executions;
 pub mod game;
 pub mod player;

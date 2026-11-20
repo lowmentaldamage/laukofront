@@ -18,7 +18,7 @@ Milestones in order. Stage numbers refer to the build guide.
 | P0 Rename, relicense, plan | **done** — builds as `laukofront`; LICENSE/NOTICE in place |
 | P1 Engine lib | **done** — sfc32 and DetMath match upstream bit for bit; deterministic map generator |
 | P2 Players, economy, spawn | **done** — growth/cap/gold match upstream formulas; spawn phase and spawning |
-| P3 Attacks and win | tile-by-tile conquest; retreat; 80% win; invariants over long runs |
+| P3 Attacks and win | **done** — tile-by-tile conquest (upstream attackLogic), retreat, takeover, encirclement, 80% win |
 | P4 Bots | a bots-only match reaches a winner |
 | P5 Bevy client | texture map, click to spawn/attack, HUD |
 

@@ -3,7 +3,8 @@
 //! Coefficients come from `assets/config/game.toml`.
 
 use crate::config::GameConfig;
-use crate::engine_lib::detmath::pow;
+use crate::engine_lib::detmath::{log, pow, sigmoid, within};
+use crate::engine_lib::game_map::TerrainType;
 
 use super::player::{Player, PlayerType};
 
@@ -65,6 +66,147 @@ pub fn attack_amount(cfg: &GameConfig, p: &Player) -> f64 {
     };
     p.troops() as f64 * pct as f64 / 100.0
 }
+
+/// Defender side of an attack (upstream `AttackLogicInput.defender`).
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct DefenderInfo {
+    pub kind: PlayerType,
+    pub num_tiles: u32,
+    pub troops: f64,
+    pub is_traitor: bool,
+    pub is_disconnected_teammate: bool,
+}
+
+/// Upstream `AttackLogicInput`.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct AttackLogicInput {
+    pub terrain: TerrainType,
+    pub attack_troops: f64,
+    pub attacker_kind: PlayerType,
+    pub attacker_tiles: u32,
+    /// `None` = attacking unowned land (terra nullius).
+    pub defender: Option<DefenderInfo>,
+    pub defender_has_defense_post: bool,
+    /// Share of land with fallout if the tile has fallout.
+    pub fallout_ratio: Option<f64>,
+    /// Tiles on the attack front this tick (plus jitter).
+    pub border_size: f64,
+}
+
+/// Upstream `AttackLogicResult`.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct AttackLogicResult {
+    pub attacker_troop_loss: f64,
+    pub defender_troop_loss: f64,
+    /// Share of this tick's conquest budget the tile uses (an attack conquers until these sum to 1).
+    pub tick_fraction: f64,
+}
+
+/// Upstream `largeTerritoryBonus`: ~1 for small territories, easing to `1 - depth` for huge ones.
+pub fn large_territory_bonus(cfg: &GameConfig, num_tiles: u32, depth: f64) -> f64 {
+    let l = &cfg.attack_logic;
+    1.0 - depth
+        * sigmoid(
+            log(num_tiles as f64),
+            l.large_territory_steepness,
+            log(l.large_territory_midpoint),
+        )
+}
+
+/// Upstream `terrainAttackBase`: (mag, tileCost). `None` for water and impassable land.
+pub fn terrain_attack_base(cfg: &GameConfig, terrain: TerrainType) -> Option<(f64, f64)> {
+    let l = &cfg.attack_logic;
+    match terrain {
+        TerrainType::Plains => Some((l.plains_mag, l.plains_cost)),
+        TerrainType::Highland => Some((l.highland_mag, l.highland_cost)),
+        TerrainType::Mountain => Some((l.mountain_mag, l.mountain_cost)),
+        _ => None,
+    }
+}
+
+/// Upstream `EngineConfig.attackLogic`: troop losses and speed for conquering one tile.
+/// Returns `None` for water/impassable tiles (upstream throws).
+pub fn attack_logic(cfg: &GameConfig, input: &AttackLogicInput) -> Option<AttackLogicResult> {
+    let l = &cfg.attack_logic;
+    let (mut mag, mut tile_cost) = terrain_attack_base(cfg, input.terrain)?;
+    if input.defender.is_some() && input.defender_has_defense_post {
+        mag *= DEFENSE_POST_DEFENSE_BONUS;
+        tile_cost *= DEFENSE_POST_SPEED_BONUS;
+    }
+    if let Some(r) = input.fallout_ratio {
+        let fallout = 5.0 - r * 2.0;
+        mag *= fallout;
+        tile_cost *= fallout;
+    }
+
+    let Some(def) = input.defender else {
+        let tick_budget = input.border_size * 2.0;
+        let div = if input.attacker_kind == PlayerType::Bot {
+            10.0
+        } else {
+            5.0
+        };
+        return Some(AttackLogicResult {
+            attacker_troop_loss: mag / div,
+            defender_troop_loss: 0.0,
+            tick_fraction: within(
+                l.terra_nullius_cost_scale * tile_cost / input.attack_troops,
+                l.terra_nullius_min_cost,
+                l.terra_nullius_max_cost,
+            ) / tick_budget,
+        });
+    };
+
+    if def.is_disconnected_teammate {
+        mag = 0.0;
+    }
+    if matches!(input.attacker_kind, PlayerType::Human | PlayerType::Nation)
+        && def.kind == PlayerType::Bot
+    {
+        mag *= l.bot_defender_loss_mult;
+    }
+    let large_attacker = large_territory_bonus(cfg, input.attacker_tiles, l.large_attacker_depth);
+    let large_defender = large_territory_bonus(cfg, def.num_tiles, l.large_defender_depth);
+    let traitor_loss = if def.is_traitor {
+        TRAITOR_DEFENSE_DEBUFF
+    } else {
+        1.0
+    };
+    let traitor_cost = if def.is_traitor {
+        TRAITOR_SPEED_DEBUFF
+    } else {
+        1.0
+    };
+
+    let defender_troop_loss = def.troops / def.num_tiles as f64;
+    let troop_ratio = def.troops / input.attack_troops;
+    let attacker_troop_loss = mag
+        * traitor_loss
+        * within(troop_ratio, l.cheapest_troop_ratio, 2.0)
+        * (l.attacker_loss_base * large_attacker * large_defender
+            + l.attacker_loss_per_density * defender_troop_loss);
+    let speed_cost = (within(troop_ratio, 0.82, 7.5) * within(troop_ratio / 20.0, 1.0, 50.0))
+        / l.speed_cost_divisor;
+    let large_attacker_speed =
+        large_territory_bonus(cfg, input.attacker_tiles, l.large_attacker_speed_depth);
+    Some(AttackLogicResult {
+        attacker_troop_loss,
+        defender_troop_loss,
+        tick_fraction: (speed_cost
+            * tile_cost
+            * large_attacker_speed
+            * large_defender
+            * traitor_cost)
+            / input.border_size,
+    })
+}
+
+/// Upstream `defensePostDefenseBonus` / `defensePostSpeedBonus` / traitor debuffs. Structures and
+/// alliances are later milestones; these are here so `attack_logic` is complete.
+const DEFENSE_POST_DEFENSE_BONUS: f64 = 5.0;
+const DEFENSE_POST_SPEED_BONUS: f64 = 3.0;
+const TRAITOR_DEFENSE_DEBUFF: f64 = 0.5;
+const TRAITOR_SPEED_DEBUFF: f64 = 0.8;
 
 #[cfg(test)]
 mod tests {

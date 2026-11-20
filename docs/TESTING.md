@@ -82,3 +82,21 @@ during spawn phase, growth and gold equal the upstream formulas tick by tick for
 level off at the cap, determinism (state hash), conquer/relinquish bookkeeping (tile and border sets
 always match the map). Upstream `simpleHash` checked against Java string hashes.
 `cargo clippy --all-targets -- -D warnings`: clean.
+
+### 2026-11-20 — Port milestone P3 (attacks)
+
+| Suite | Passed |
+|---|---|
+| unit tests in `src/` | 36 |
+| `tests/engine_p2.rs` | 10 |
+| `tests/engine_p3.rs` | 16 |
+| **Total** | **62**, 0 failed |
+
+P3 covers: `attackLogic` equals the upstream formula for a player defender and for unowned land
+(plus bot loss and water rejection); attacks on unowned land expand and cost troops; the default
+attack sends 20%; attacks on a bot take land and kill troops; an attack with no shared border is
+refunded; spawn immunity (humans blocked, bots not); retreat freezes the attack and refunds
+exactly growth + 75% after ~20 ticks; opposing attacks cancel; same-target attacks merge; a
+< 100-tile defender is wiped out and loses its gold; an encircled pocket is annexed, one touching
+unowned land is not; 80% wins, 70% does not; a 13-player, 600-tick random-attack match keeps every
+invariant and is deterministic. The tile heap pops in priority order with `f32` priorities.

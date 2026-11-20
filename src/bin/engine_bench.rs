@@ -3,14 +3,17 @@
 //!     cargo run --release --bin engine_bench -- --ticks 2000 --seed 1
 //!
 //! For each map size and bot count: build the match (timed), spawn everyone, then time
-//! `--ticks` ticks after the spawn phase. P2 ticks contain economy only; attacks arrive in P3.
+//! `--ticks` ticks after the spawn phase. Every 10 ticks each living player launches a default
+//! attack at a random other player or at unowned land (a stand-in for AI until P4), so ticks
+//! include economy, attacks, takeovers and encirclement checks. Max tick = worst single tick.
 
 use std::process::ExitCode;
 use std::time::{Duration, Instant};
 
 use laukofront::config::{GameConfig, MapSize, GAME_CONFIG_PATH};
 use laukofront::engine::util::spawn_tiles;
-use laukofront::engine::{new_match, run_turn, Intent, MatchSetup, HUMAN};
+use laukofront::engine::{new_match, run_turn, Intent, MatchSetup, PlayerId, HUMAN};
+use laukofront::engine_lib::random::PseudoRandom;
 
 const BOTS: [u32; 3] = [0, 10, 50];
 
@@ -32,8 +35,8 @@ fn run() -> Result<(), String> {
         "release"
     };
     println!("engine_bench: {ticks} ticks per case, seed {seed}, {profile} build\n");
-    println!("| Map | Tiles | Bots | Setup (ms) | Ticks/s | Mean tick (µs) | Max tick (µs) |");
-    println!("|---|---|---|---|---|---|---|");
+    println!("| Map | Tiles | Bots | Setup (ms) | Ticks/s | Mean tick (µs) | Max tick (µs) | Owned tiles at end |");
+    println!("|---|---|---|---|---|---|---|---|");
     for size in MapSize::ALL {
         for bots in BOTS {
             let start = Instant::now();
@@ -55,20 +58,39 @@ fn run() -> Result<(), String> {
             );
             run_turn(&mut g, &[]);
             let (mut total, mut max) = (Duration::ZERO, Duration::ZERO);
-            for _ in 0..ticks {
+            let mut rng = PseudoRandom::new(seed);
+            let mut intents = Vec::new();
+            for i in 0..ticks {
+                intents.clear();
+                if i % 10 == 0 {
+                    let alive: Vec<PlayerId> = g.alive_players().map(|p| p.id()).collect();
+                    for &p in &alive {
+                        let target = if rng.chance(3) {
+                            None
+                        } else {
+                            rng.index(alive.len()).map(|k| alive[k]).filter(|&q| q != p)
+                        };
+                        intents.push(Intent::Attack {
+                            player: p,
+                            target,
+                            troops: None,
+                        });
+                    }
+                }
                 let t0 = Instant::now();
-                run_turn(&mut g, &[]);
+                run_turn(&mut g, &intents);
                 let dt = t0.elapsed();
                 total += dt;
                 max = max.max(dt);
             }
             println!(
-                "| {size:?} | {} | {bots} | {:.1} | {:.0} | {:.2} | {:.2} |",
+                "| {size:?} | {} | {bots} | {:.1} | {:.0} | {:.2} | {:.2} | {} |",
                 g.map().num_tiles(),
                 setup.as_secs_f64() * 1e3,
                 ticks as f64 / total.as_secs_f64().max(1e-12),
                 total.as_secs_f64() * 1e6 / ticks as f64,
-                max.as_secs_f64() * 1e6
+                max.as_secs_f64() * 1e6,
+                g.players().iter().map(|p| p.num_tiles()).sum::<u32>()
             );
         }
     }

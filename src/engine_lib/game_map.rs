@@ -129,6 +129,11 @@ impl GameMap {
         self.is_land(t) && self.is_shoreline(t)
     }
 
+    /// Land tile with an ocean 4-neighbour (upstream `isOceanShore`).
+    pub fn is_ocean_shore(&self, t: TileRef) -> bool {
+        self.is_land(t) && self.for_each_neighbor_any(t, |n| self.is_ocean(n))
+    }
+
     #[inline]
     pub fn magnitude(&self, t: TileRef) -> u8 {
         self.terrain[t as usize] & MAGNITUDE_MASK

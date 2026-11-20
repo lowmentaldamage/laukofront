@@ -11,7 +11,8 @@ use std::collections::VecDeque;
 use crate::config::GameConfig;
 use crate::engine_lib::game_map::{GameMap, TileRef};
 
-use super::player::{Player, PlayerId, PlayerInfo};
+use super::attack::{Attack, AttackId};
+use super::player::{Player, PlayerId, PlayerInfo, PlayerType};
 use super::rules;
 
 /// Upstream `Execution`: one ongoing piece of simulation (a spawn, a player's economy, an attack).
@@ -43,6 +44,12 @@ pub struct Game {
     border_slot: Vec<u32>,
     /// Tiles whose owner changed this tick (for the renderer).
     changed_tiles: Vec<TileRef>,
+    /// Every attack of the match, by id (inactive ones stay so executions can see they ended).
+    attacks: Vec<Attack>,
+    winner: Option<PlayerId>,
+    /// Flood-fill scratch: tile -> generation it was visited in.
+    visit_gen: Vec<u32>,
+    gen: u32,
 }
 
 impl Game {
@@ -60,6 +67,10 @@ impl Game {
             tile_slot: vec![NONE; n],
             border_slot: vec![NONE; n],
             changed_tiles: Vec::new(),
+            attacks: Vec::new(),
+            winner: None,
+            visit_gen: vec![0; n],
+            gen: 0,
         }
     }
 
@@ -121,6 +132,94 @@ impl Game {
         &self.changed_tiles
     }
 
+    /// Ticks since the spawn phase ended (0 during it).
+    pub fn ticks_since_start(&self) -> u64 {
+        self.start_tick.map_or(0, |s| self.ticks.saturating_sub(s))
+    }
+
+    /// Upstream `elapsedGameSeconds`.
+    pub fn elapsed_game_seconds(&self) -> f64 {
+        self.ticks_since_start() as f64 / self.config.game.tick_hz as f64
+    }
+
+    /// Upstream `isSpawnImmunityActive`.
+    pub fn is_spawn_immunity_active(&self) -> bool {
+        self.in_spawn_phase() || self.ticks_since_start() < self.config.game.spawn_immunity_ticks
+    }
+
+    /// Upstream `Player.isImmune`: humans and nations are immune during spawn immunity; bots never.
+    pub fn is_immune(&self, p: PlayerId) -> bool {
+        match self.player(p).map(|p| p.kind()) {
+            Some(PlayerType::Human) | Some(PlayerType::Nation) => self.is_spawn_immunity_active(),
+            _ => false,
+        }
+    }
+
+    /// Upstream `canAttackPlayer` (no alliances or teams yet, so nobody is friendly):
+    /// only human attackers respect spawn immunity.
+    pub fn can_attack_player(&self, attacker: PlayerId, target: PlayerId) -> bool {
+        if attacker == target {
+            return false;
+        }
+        match self.player(attacker).map(|p| p.kind()) {
+            Some(PlayerType::Human) => !self.is_immune(target),
+            Some(_) => true,
+            None => false,
+        }
+    }
+
+    /// Upstream `sharesBorderWith`. `other = None` means unowned land.
+    pub fn shares_border_with(&self, p: PlayerId, other: Option<PlayerId>) -> bool {
+        let other_id = other.unwrap_or(0);
+        let Some(pl) = self.player(p) else {
+            return false;
+        };
+        let mut buf = [0; 4];
+        pl.border.iter().any(|&t| {
+            let n = self.map.neighbors4(t, &mut buf);
+            buf[..n].iter().any(|&nb| self.map.owner_id(nb) == other_id)
+        })
+    }
+
+    pub fn attack(&self, id: AttackId) -> Option<&Attack> {
+        self.attacks.get(id as usize)
+    }
+
+    pub fn attack_mut(&mut self, id: AttackId) -> Option<&mut Attack> {
+        self.attacks.get_mut(id as usize)
+    }
+
+    /// Upstream `incomingAttacks`: attacks against `p` whose attacker is still alive.
+    pub fn incoming_attacks(&self, p: PlayerId) -> Vec<AttackId> {
+        self.player(p).map_or_else(Vec::new, |pl| {
+            pl.incoming
+                .iter()
+                .copied()
+                .filter(|&a| {
+                    self.attack(a)
+                        .and_then(|at| self.player(at.attacker))
+                        .is_some_and(|ap| ap.is_alive())
+                })
+                .collect()
+        })
+    }
+
+    /// The winner, once the win check has found one.
+    pub fn winner(&self) -> Option<PlayerId> {
+        self.winner
+    }
+
+    pub(crate) fn set_winner(&mut self, p: PlayerId) {
+        if self.winner.is_none() {
+            self.winner = Some(p);
+        }
+    }
+
+    /// Players that still own land.
+    pub fn alive_players(&self) -> impl Iterator<Item = &Player> {
+        self.players.iter().filter(|p| p.is_alive())
+    }
+
     pub fn num_executions(&self) -> usize {
         self.execs.len() + self.uninit.len()
     }
@@ -150,6 +249,104 @@ impl Game {
     pub(crate) fn set_spawn_tile(&mut self, p: PlayerId, t: TileRef) {
         if let Some(pl) = self.player_mut(p) {
             pl.spawn_tile = Some(t);
+        }
+    }
+
+    /// The player's land split into 4-connected pieces.
+    pub fn components_of(&mut self, p: PlayerId) -> Vec<Vec<TileRef>> {
+        let Some(pl) = self.player(p) else {
+            return Vec::new();
+        };
+        let tiles = pl.tiles.clone();
+        self.gen = self.gen.wrapping_add(1);
+        if self.gen == 0 {
+            self.visit_gen.fill(0);
+            self.gen = 1;
+        }
+        let gen = self.gen;
+        let mut pieces = Vec::new();
+        let mut buf = [0; 4];
+        for start in tiles {
+            if self.visit_gen[start as usize] == gen {
+                continue;
+            }
+            self.visit_gen[start as usize] = gen;
+            let mut piece = vec![start];
+            let mut head = 0;
+            while head < piece.len() {
+                let t = piece[head];
+                head += 1;
+                let n = self.map.neighbors4(t, &mut buf);
+                for &nb in &buf[..n] {
+                    if self.visit_gen[nb as usize] != gen && self.map.owner_id(nb) == p {
+                        self.visit_gen[nb as usize] = gen;
+                        piece.push(nb);
+                    }
+                }
+            }
+            pieces.push(piece);
+        }
+        pieces
+    }
+
+    /// Upstream `createAttack`: registers an attack in both players' lists.
+    pub(crate) fn create_attack(
+        &mut self,
+        attacker: PlayerId,
+        target: Option<PlayerId>,
+        troops: f64,
+        source_tile: Option<TileRef>,
+    ) -> AttackId {
+        let id = self.attacks.len() as AttackId;
+        self.attacks
+            .push(Attack::new(id, attacker, target, troops, source_tile));
+        if let Some(p) = self.player_mut(attacker) {
+            p.outgoing.push(id);
+        }
+        if let Some(t) = target {
+            if let Some(p) = self.player_mut(t) {
+                p.incoming.push(id);
+            }
+        }
+        id
+    }
+
+    /// Upstream `Attack.delete`: removes the attack from both players' lists and deactivates it.
+    pub(crate) fn delete_attack(&mut self, id: AttackId) {
+        let Some(a) = self.attacks.get_mut(id as usize) else {
+            return;
+        };
+        a.active = false;
+        let (attacker, target) = (a.attacker, a.target);
+        if let Some(p) = self.player_mut(attacker) {
+            p.outgoing.retain(|&x| x != id);
+        }
+        if let Some(t) = target {
+            if let Some(p) = self.player_mut(t) {
+                p.incoming.retain(|&x| x != id);
+            }
+        }
+    }
+
+    /// Upstream `conquerPlayer`: the conqueror takes the conquered player's gold (all of a bot's or
+    /// nation's, half of a human's; nothing from a human who never attacked).
+    pub(crate) fn conquer_player(&mut self, conqueror: PlayerId, conquered: PlayerId) {
+        let Some(c) = self.player(conquered) else {
+            return;
+        };
+        if c.attacks_sent == 0 && c.kind() == PlayerType::Human {
+            return;
+        }
+        let gold = c.gold();
+        let captured = match c.kind() {
+            PlayerType::Bot | PlayerType::Nation => gold,
+            PlayerType::Human => gold / 2,
+        };
+        if let Some(p) = self.player_mut(conqueror) {
+            p.add_gold(captured);
+        }
+        if let Some(p) = self.player_mut(conquered) {
+            p.remove_gold(gold);
         }
     }
 

@@ -2,6 +2,8 @@
 
 use crate::engine_lib::game_map::TileRef;
 
+use super::attack::AttackId;
+
 /// 1-based small id as upstream: 0 means "nobody" (terra nullius) in the tile state.
 pub type PlayerId = u16;
 
@@ -47,6 +49,10 @@ pub struct Player {
     pub(crate) border: Vec<TileRef>,
     pub(crate) spawn_tile: Option<TileRef>,
     pub(crate) last_tile_change: u64,
+    pub(crate) outgoing: Vec<AttackId>,
+    pub(crate) incoming: Vec<AttackId>,
+    /// Attacks launched (upstream stats `attacks[ATTACK_INDEX_SENT]`); decides conquest gold.
+    pub(crate) attacks_sent: u32,
 }
 
 impl Player {
@@ -60,6 +66,9 @@ impl Player {
             border: Vec::new(),
             spawn_tile: None,
             last_tile_change: 0,
+            outgoing: Vec::new(),
+            incoming: Vec::new(),
+            attacks_sent: 0,
         }
     }
 
@@ -114,6 +123,27 @@ impl Player {
 
     pub fn last_tile_change(&self) -> u64 {
         self.last_tile_change
+    }
+
+    /// Ids of this player's active outgoing attacks.
+    pub fn outgoing_attacks(&self) -> &[AttackId] {
+        &self.outgoing
+    }
+
+    /// Ids of active attacks against this player (all attackers, alive or not).
+    pub fn incoming_attack_ids(&self) -> &[AttackId] {
+        &self.incoming
+    }
+
+    pub fn attacks_sent(&self) -> u32 {
+        self.attacks_sent
+    }
+
+    /// Upstream `removeGold`: removes up to `g`, returns the amount removed.
+    pub fn remove_gold(&mut self, g: i64) -> i64 {
+        let r = self.gold.min(g.max(0));
+        self.gold -= r;
+        r
     }
 
     /// Upstream `addTroops`: adds `floor(x)`; a negative amount removes instead.

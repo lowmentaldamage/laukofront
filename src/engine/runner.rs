@@ -5,15 +5,26 @@ use crate::config::{GameConfig, MapSize};
 use crate::engine_lib::game_map::TileRef;
 use crate::engine_lib::terrain;
 
+use super::attack::AttackId;
+use super::attack_exec::{AttackExecution, RetreatExecution, WinCheckExecution};
 use super::executions::{SpawnExecution, SpawnTimerExecution};
 use super::game::Game;
 use super::player::{PlayerId, PlayerInfo, PlayerType};
 
 /// A player action, as upstream's intents. More kinds arrive with later milestones.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub enum Intent {
     /// Pick (or move) a spawn point during the spawn phase.
     Spawn { player: PlayerId, tile: TileRef },
+    /// Send troops against a neighbour (`target = None` = unowned land). `troops = None` sends the
+    /// default share (20% for humans, 5% for bots).
+    Attack {
+        player: PlayerId,
+        target: Option<PlayerId>,
+        troops: Option<f64>,
+    },
+    /// Pull back one of the player's attacks (completes after the retreat delay).
+    CancelAttack { player: PlayerId, attack: AttackId },
 }
 
 /// What a single-player match is created with.
@@ -40,6 +51,7 @@ pub fn new_match(config: GameConfig, setup: MatchSetup) -> Result<Game, String> 
     let human = game.add_player(PlayerInfo::new("human", "You", PlayerType::Human));
     debug_assert_eq!(human, HUMAN);
     game.add_execution(Box::new(SpawnTimerExecution::new()));
+    game.add_execution(Box::new(WinCheckExecution::new()));
     for i in 1..=setup.bots {
         let id = game.add_player(PlayerInfo::new(
             format!("bot_{i}"),
@@ -57,6 +69,16 @@ pub fn run_turn(game: &mut Game, intents: &[Intent]) {
         match *intent {
             Intent::Spawn { player, tile } => {
                 game.add_execution(Box::new(SpawnExecution::new(player, Some(tile), true)));
+            }
+            Intent::Attack {
+                player,
+                target,
+                troops,
+            } => {
+                game.add_execution(Box::new(AttackExecution::new(player, target, troops)));
+            }
+            Intent::CancelAttack { player, attack } => {
+                game.add_execution(Box::new(RetreatExecution::new(player, attack)));
             }
         }
     }

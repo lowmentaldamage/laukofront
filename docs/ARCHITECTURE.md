@@ -15,6 +15,9 @@ laukofront ports the OpenFront engine (see `NOTICE.md`). Module names follow ups
 | `engine::rules` | `Config.troopCap`, `troopIncreaseRate`, `goldAdditionRate`, `startManpower`, `attackAmount` | formulas | no |
 | `engine::game` | `game/GameImpl.ts` (core) | `Game`: map, players, tick loop, conquer/relinquish, borders, spawn phase; `Execution` trait | no |
 | `engine::executions` | `SpawnTimerExecution`, `SpawnExecution`, `PlayerExecution` | executions | no |
+| `engine::attack` | `game/AttackImpl.ts`, `utils/FlatBinaryHeap.ts` | `Attack`, `TileHeap` | no |
+| `engine::attack_exec` | `AttackExecution`, `RetreatExecution`, `WinCheckExecution` | attacks, retreat, win | no |
+| `engine::clusters` | `PlayerExecution.removeClusters` (simplified, D25) | encirclement | no |
 | `engine::runner` | `GameRunner.ts`, `ExecutionManager.ts` | match setup, `Intent` → execution | no |
 | `engine::util` | `Util.simpleHash`, `getSpawnTiles` | helpers | no |
 | `render`, `input`, `ui`, `menu` | — | Bevy client (P5) | yes |

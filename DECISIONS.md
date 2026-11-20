@@ -165,3 +165,22 @@ One entry per decision: date, choice, reason, rejected options.
   ported rules. `engine_bench` replaces `sim_bench`.
 - **Reason:** they modelled the abandoned territory-graph design (D16). Git history keeps them.
   Upstream's AI settings will come back with the bot and nation milestones.
+
+## D25. Encirclement rule simplified
+- **Date:** 2026-11-20
+- **Choice:** `engine::clusters` ports the main rules of upstream `PlayerExecution.removeClusters`
+  (single-enemy test for the largest piece, surrounded test and captor choice for the others) on
+  4-connected pieces of the whole territory. Upstream's diagonal-pinch handling and its
+  border-tile clustering are not ported.
+- **Reason:** upstream's version is ~1 200 lines; the main rules cover normal play.
+- **Consequence:** rare diagonal-pinch cases can resolve differently. Flood-filling whole
+  territories costs up to ~3 ms on a single tick on the largest map (see PERFORMANCE.md); porting
+  upstream's border-tile clustering is the fix if Stage 15 needs it.
+
+## D26. What the attack port leaves out
+- **Date:** 2026-11-20
+- **Choice:** attacks are ported without alliances (nobody is friendly), embargoes, relations,
+  defense posts, fallout, boat attacks, and stats other than "attacks sent". Attack ids are
+  numbers (indexes into the game's attack table) instead of upstream's random strings.
+- **Reason:** those features belong to later milestones; the hooks (`DefenderInfo.is_traitor`,
+  `defender_has_defense_post`, `fallout_ratio`, `source_tile`) are in place.

@@ -52,3 +52,29 @@ starting_gold = 0
 [attack]                        # upstream: attackAmount (share of troops the UI/bots send by default)
 human_default_percent = 20
 bot_default_percent = 5
+
+[attack_logic]                  # upstream: EngineConfig attackLogic tunables and terrainAttackBase
+plains_mag = 80.0
+plains_cost = 16.5
+highland_mag = 100.0
+highland_cost = 20.0
+mountain_mag = 120.0
+mountain_cost = 25.0
+large_territory_midpoint = 300000.0
+large_territory_steepness = 2.5
+large_attacker_depth = 0.7
+large_defender_depth = 0.3
+large_attacker_speed_depth = 0.73
+bot_defender_loss_mult = 0.7
+terra_nullius_cost_scale = 2000.0
+terra_nullius_min_cost = 5.0
+terra_nullius_max_cost = 100.0
+attacker_loss_base = 0.463
+cheapest_troop_ratio = 0.6
+attacker_loss_per_density = 0.0039
+speed_cost_divisor = 8.55
+retreat_malus_percent = 25.0    # upstream: malusForRetreat (only when retreating from a player)
+retreat_delay_ticks = 20        # upstream: RetreatExecution cancelDelay
+conquer_bot_defender_cutoff_tiles = 100  # upstream: handleDeadDefender threshold
+cluster_check_ticks = 20        # upstream: TICKS_PER_CLUSTER_CALC
+hard_time_limit_seconds = 10200 # upstream: WinCheckExecution HARD_TIME_LIMIT_SECONDS (170 min)
