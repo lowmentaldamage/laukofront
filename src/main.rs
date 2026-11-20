@@ -14,7 +14,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use bevy::prelude::*;
 use bevy::window::{PresentMode, WindowResolution};
 
-use laukofront::client::{ClientPlugin, ClientSettings, GameState, PendingIntents};
+use laukofront::client::{ClientPlugin, ClientSettings, CurrentSetup, GameState, PendingIntents};
 use laukofront::config::{GameConfig, MapSize, GAME_CONFIG_PATH};
 use laukofront::engine::util::spawn_tiles;
 use laukofront::engine::{new_match, Intent, MatchSetup, HUMAN};
@@ -164,6 +164,7 @@ fn run() -> Result<(), String> {
         ..default()
     }))
     .insert_resource(GameState(game))
+    .insert_resource(CurrentSetup(o.setup))
     .add_plugins((
         ClientPlugin { tick_hz },
         MapRenderPlugin,

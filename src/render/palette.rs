@@ -8,6 +8,8 @@ pub const LAKE: [u8; 4] = [38, 72, 104, 255];
 pub const IMPASSABLE: [u8; 4] = [14, 16, 20, 255];
 /// The human's colour.
 pub const HUMAN_COLOR: [u8; 3] = [70, 140, 255];
+/// Border colour of the human's own land.
+pub const OWN_BORDER: [u8; 4] = [255, 214, 92, 255];
 /// How strongly an owner's colour covers the terrain (0..1).
 pub const OWNER_TINT: f32 = 0.62;
 
@@ -74,6 +76,10 @@ pub fn tile_color(map: &GameMap, t: TileRef) -> [u8; 4] {
     }
     let pc = player_color(owner);
     if map.is_border(t) {
+        // Your own border is bright gold so your land stands out on any map.
+        if owner == HUMAN {
+            return OWN_BORDER;
+        }
         return [
             (pc[0] as f32 * 0.55) as u8,
             (pc[1] as f32 * 0.55) as u8,

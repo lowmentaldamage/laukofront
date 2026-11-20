@@ -24,7 +24,9 @@ laukofront ports the OpenFront engine (see `NOTICE.md`). Module names follow ups
 | `client` | — | `GameState` resource, fixed-tick runner, pending intents, changed tiles, settings, notices | yes |
 | `render` (+ `camera`, `palette`, `perf`) | — | map texture, repaint of changed tiles, camera, colours, frame-time/screenshot tools | yes |
 | `input` | — | click rules (`click_action`, pure), mouse and keys → intents | yes |
-| `ui` | — | HUD text (pure builders + Bevy nodes) | yes |
+| `ui` (`hud`, `minimap`, `tutorial`, `labels`, `endscreen`) | — | HUD, minimap, tutorial, map labels, end screen; pure number/row builders in `ui/mod.rs` | yes |
+| `render::effects` | — | capture flash overlay, attack-front shimmer, spawn rings | yes |
+| `client::settings` | — | settings file | yes |
 | `menu` | — | Stage 12 | yes |
 | `bin/engine_bench`, `bin/map_preview`, `bin/bot_match` | — | tools | no |
 

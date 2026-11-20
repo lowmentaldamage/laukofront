@@ -1,7 +1,7 @@
 # Project status
 
 **Date:** 2026-11-20
-**State:** OpenFront engine port P0–P5 done: the game is **playable** against bots (`cargo run --release`). Boats (P6) are next, then the remaining build-guide stages (menus, save, polish, QA, release).
+**State:** playable against bots with a full interface (port milestones P0–P6). Next: boats (P7), then buildings, warships and nukes, diplomacy and nations, maps, menus, save/audio, release (P8–P14; see ROADMAP).
 The game is **not playable yet**: there is no window, map rendering or input. The simulation
 rules work and are tested headless.
 

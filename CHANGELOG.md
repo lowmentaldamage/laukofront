@@ -22,3 +22,6 @@ Versions follow the build guide milestones. `1.0.0` is the finished game.
 - P4: bot AI (upstream tribe behaviour, land only); `bot_match` tool.
 - P5: Bevy client — map texture, camera, click to spawn/attack, attack size, retreat, pause, speed,
   HUD, leaderboard, attribution; `--autoplay`, `--perf-run`, `--screenshot`.
+- P6: interface overhaul — left HUD cards, clickable attack size and speed, retreat buttons,
+  minimap, on-map tutorial, gold own-land border and YOU marker, map labels, capture flash, end
+  screen with restart, notifications, saved settings.

@@ -1,6 +1,7 @@
 //! Player input (P5): click to spawn or attack, keys for attack size, pause, speed and retreat.
 //! Input never changes the game directly; it queues `Intent`s for the next tick.
 
+use bevy::picking::hover::HoverMap;
 use bevy::prelude::*;
 use bevy::window::PrimaryWindow;
 
@@ -9,17 +10,33 @@ use crate::engine::{Game, Intent, HUMAN};
 use crate::engine_lib::game_map::TileRef;
 use crate::render::camera::MapCamera;
 use crate::render::world_to_tile;
+use crate::ui::pointer_over_ui;
 
 pub struct InputPlugin;
 
 impl Plugin for InputPlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<Hovered>()
-            .add_systems(Update, (track_hover, click_map, keyboard));
+            .init_resource::<PlayerActions>()
+            .add_systems(
+                Update,
+                (track_hover, click_map, keyboard, track_size_changes),
+            );
     }
 }
 
-/// Tile under the mouse cursor.
+/// What the player has done this match (drives the tutorial).
+#[derive(Resource, Default, Debug, Clone, PartialEq)]
+pub struct PlayerActions {
+    /// Sent an attack into free land.
+    pub attacked_land: bool,
+    /// Changed the attack size.
+    pub changed_size: bool,
+    /// Sent an attack at another player.
+    pub attacked_player: bool,
+}
+
+/// Tile under the mouse cursor (`None` over the HUD or outside the map).
 #[derive(Resource, Default)]
 pub struct Hovered(pub Option<TileRef>);
 
@@ -91,10 +108,16 @@ fn track_hover(
     camera: Single<(&Camera, &GlobalTransform), With<MapCamera>>,
     window: Single<&Window, With<PrimaryWindow>>,
     game: Res<GameState>,
+    hover_map: Res<HoverMap>,
+    nodes: Query<(), With<Node>>,
     mut hovered: ResMut<Hovered>,
 ) {
     let (cam, t) = *camera;
-    let tile = cursor_tile(cam, t, &window, &game.0);
+    let tile = if pointer_over_ui(&hover_map, &nodes) {
+        None
+    } else {
+        cursor_tile(cam, t, &window, &game.0)
+    };
     if hovered.0 != tile {
         hovered.0 = tile;
     }
@@ -107,6 +130,7 @@ fn click_map(
     settings: Res<ClientSettings>,
     mut pending: ResMut<PendingIntents>,
     mut notices: ResMut<Notices>,
+    mut actions: ResMut<PlayerActions>,
 ) {
     if !buttons.just_pressed(MouseButton::Left) {
         return;
@@ -117,11 +141,18 @@ fn click_map(
             player: HUMAN,
             tile,
         }),
-        ClickAction::Attack { target, troops } => pending.0.push(Intent::Attack {
-            player: HUMAN,
-            target,
-            troops: Some(troops),
-        }),
+        ClickAction::Attack { target, troops } => {
+            if target.is_some() {
+                actions.attacked_player = true;
+            } else {
+                actions.attacked_land = true;
+            }
+            pending.0.push(Intent::Attack {
+                player: HUMAN,
+                target,
+                troops: Some(troops),
+            })
+        }
         ClickAction::Refuse(why) => notices.push(why),
     }
 }
@@ -152,6 +183,9 @@ fn keyboard(
     if keys.just_pressed(KeyCode::Space) {
         settings.paused = !settings.paused;
     }
+    if keys.just_pressed(KeyCode::KeyH) {
+        settings.show_help = !settings.show_help;
+    }
     for (k, speed) in [(KeyCode::F1, 1), (KeyCode::F2, 2), (KeyCode::F3, 3)] {
         if keys.just_pressed(k) {
             settings.speed = speed;
@@ -174,6 +208,21 @@ fn keyboard(
             None => notices.push("No attack to retreat"),
         }
     }
+}
+
+/// Marks the tutorial step "change the attack size" when the size changes by any means.
+fn track_size_changes(
+    settings: Res<ClientSettings>,
+    mut actions: ResMut<PlayerActions>,
+    mut last: Local<Option<f64>>,
+) {
+    let now = settings.attack_ratio;
+    if let Some(prev) = *last {
+        if prev != now {
+            actions.changed_size = true;
+        }
+    }
+    *last = Some(now);
 }
 
 #[cfg(test)]

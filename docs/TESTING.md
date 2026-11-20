@@ -148,3 +148,22 @@ leaderboard count and leader); number formatting.
 Manual check (2026-11-20, dev PC): `laukofront --size medium --bots 20 --seed 3 --autoplay` —
 map, territories, borders, HUD, leaderboard and attribution visible; the autoplayed human spawns
 and attacks; screenshot reviewed. A human mouse play-test is part of Stage 16.
+
+### 2026-11-20 — Port milestone P6 (interface)
+
+| Suite | Passed |
+|---|---|
+| unit tests in `src/` | 61 |
+| `tests/engine_p2.rs` / `p3` / `p4` | 10 / 16 / 4 |
+| **Total** | **91**, 0 failed |
+
+New tests: HUD numbers equal the game (troops, cap, growth/s, gold, gold/s = 1000, tiles, win
+share); leaderboard sorted and always includes you; attack lines list outgoing attacks; number
+format; notifications for eliminations during a bots match; notice list keeps the newest six;
+saved settings round trip, clamping and broken files; tutorial steps advance only in order; labels
+sit on their owner's land and grow with territory; minimap size, pixels and camera rectangle;
+capture flash fades to zero; full repaint has one texel per tile.
+
+Manual (2026-11-20, dev PC): screenshots after spawn and at 2 minutes reviewed — left HUD, minimap,
+clock/speed buttons, gold border and YOU marker, tutorial bubble, labels; fixed leaderboard rows
+wrapping, oversized labels, and see-through panels.

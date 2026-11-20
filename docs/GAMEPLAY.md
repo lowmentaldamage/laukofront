@@ -95,6 +95,24 @@ Port of upstream tribe AI (`TribeExecution`, `TribeAttackBehavior`, land parts o
 - HUD: time, troops / cap, gold, share of land, attack size, active attacks; leaderboard of the top
   10 by land; hover info; notices; help line and the OpenFront attribution.
 
+## Implemented (P6): interface
+
+- **Left column:** troops (bar against the cap, growth per second), attack size (clickable bar and
+  the troops it sends), gold (with income per second), land (% and tiles, progress bar to the 80%
+  win), attacks (outgoing with retreat buttons, incoming in red), leaderboard (colour, land %,
+  troops; your row highlighted, and added at the bottom if you are not in the top 10),
+  notifications (incoming attacks, eliminations, land lost, match result).
+- **Top right:** clock, pause, speed, controls card. **Bottom right:** minimap with the camera's
+  view; click to jump. **Bottom:** hover info and the OpenFront attribution.
+- **Tutorial on the map:** four hints next to your land (spawn, expand, attack size, attack a
+  player), each finished by doing it; Esc skips; remembered in
+  `%APPDATA%\laukofront\settings.toml`.
+- **Your land:** gold border always; pulsing rings and a "YOU" marker for 30 s after you spawn.
+- **On the map:** every player's name and troops at its territory centre, sized by territory;
+  conquered tiles flash in the new owner's colour; your attack fronts shimmer.
+- **End screen:** victory, defeat or elimination with time and your best land share; New match
+  (next seed), Keep watching, Quit.
+
 ## Coming next
 
-- **Boats (P6):** transport ships, so players on separate landmasses can reach each other.
+- **Boats (P7):** transport ships, so players on separate landmasses can reach each other.

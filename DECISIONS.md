@@ -223,3 +223,25 @@ One entry per decision: date, choice, reason, rejected options.
 - **Reason:** the first screenshot showed the game paused and panned by keystrokes meant for
   another window; and unfocused windows are throttled to 60 FPS by default, which hid the real
   frame time.
+
+## D32. P6 interface layout
+- **Date:** 2026-11-20
+- **Choice:** one left column of cards (troops, gold, land, attacks, leaderboard, notifications);
+  clock and speed top right; minimap bottom right (not bottom left as first planned, because the
+  left column is tall); hover info bottom centre; key help only on demand (H / ?), replaced at the
+  start by the on-map tutorial.
+- **Reason:** the owner's play-test asked for the HUD on the left, better organised numbers, and a
+  tutorial instead of an always-visible help line.
+
+## D33. Simpler label placement than upstream
+- **Date:** 2026-11-20
+- **Choice:** a player's label sits at the average position of its tiles (moved onto its own land
+  if that falls outside), sized by `sqrt(tiles)`, recomputed every 10 ticks. Upstream's
+  `NameBoxCalculator` (largest inscribed box) is not ported.
+- **Reason:** cheap (one pass over owned tiles) and good enough for compact territories; long
+  curved territories may get a label off-centre.
+
+## D34. Settings file location
+- **Date:** 2026-11-20
+- **Choice:** `%APPDATA%\laukofront\settings.toml` (or `$HOME/.config/laukofront/`), TOML,
+  defaults when missing or broken. Holds `tutorial_done` and `default_attack_ratio` for now.

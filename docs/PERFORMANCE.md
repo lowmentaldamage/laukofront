@@ -140,3 +140,15 @@ speed = 30 ticks/s, first 2 s not recorded). Dev PC (RTX 4090, Ryzen 9 7950X).
 
 Targets on this PC: 60 FPS ✔, no frame over 33 ms ✔. Still not measured on a mid-range PC
 (Stage 15). A first run showed exactly 60 FPS: the unfocused window was throttled (D31).
+
+### 2026-11-20 — Port milestone P6: frame time with the new interface
+
+Same command as P5 (1080p, no vsync, autoplay 3×).
+
+| Setup | Frames | Avg frame | FPS | p99 | Max | Frames > 33 ms |
+|---|---|---|---|---|---|---|
+| Medium, 20 bots | 33 852 | 1.77 ms | 564 | 3.46 ms | 8.95 ms | 0 |
+| Large, 50 bots | 25 494 | 2.35 ms | 425 | 5.40 ms | 9.42 ms | 0 |
+
+The HUD, labels, minimap and capture overlay cost about 1–1.5 ms per frame (P5: 0.8 ms). Still far
+inside the 16.6 ms / 33 ms budgets on this PC.

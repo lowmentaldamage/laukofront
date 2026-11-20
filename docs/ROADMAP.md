@@ -21,7 +21,15 @@ Milestones in order. Stage numbers refer to the build guide.
 | P3 Attacks and win | **done** — tile-by-tile conquest (upstream attackLogic), retreat, takeover, encirclement, 80% win |
 | P4 Bots | **done** — tribe AI; bots-only matches reach a winner (by conquest when the map allows, D27) |
 | P5 Bevy client | **done** — texture map, click to spawn/attack, keys, HUD, leaderboard |
-| P6 Boats | transport ships and water pathfinding; no more stalled matches (D28) |
+| P6 Interface | **done** — left HUD, minimap, on-map tutorial, own-land highlight, labels, capture flash, end screen |
+| P7 Boats | transport ships and water routing; no more stalled matches (D28) |
+| P8 Buildings | city, port, factory, defense post, trade ships, trains, build menu |
+| P9 Warships and nukes | warships, missile silo, atom/hydrogen bomb, MIRV, SAM, fallout |
+| P10 Diplomacy and nations | alliances, embargo, donations, nation AI with difficulty |
+| P11 Maps | richer generator (biomes, rivers, styles) and real-Earth maps from Natural Earth |
+| P12 Menus and modes | main menu, match setup, teams, Doomsday Clock, settings |
+| P13 Save, audio, polish | snapshots, sound, end-of-match statistics |
+| P14 Performance and release | border-tile encirclement, mid-range PC, zip, v1.0.0 |
 
 ## Future
 
