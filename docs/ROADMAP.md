@@ -19,8 +19,9 @@ Milestones in order. Stage numbers refer to the build guide.
 | P1 Engine lib | **done** — sfc32 and DetMath match upstream bit for bit; deterministic map generator |
 | P2 Players, economy, spawn | **done** — growth/cap/gold match upstream formulas; spawn phase and spawning |
 | P3 Attacks and win | **done** — tile-by-tile conquest (upstream attackLogic), retreat, takeover, encirclement, 80% win |
-| P4 Bots | a bots-only match reaches a winner |
+| P4 Bots | **done** — tribe AI; bots-only matches reach a winner (by conquest when the map allows, D27) |
 | P5 Bevy client | texture map, click to spawn/attack, HUD |
+| P6 Boats | transport ships and water pathfinding; no more stalled matches (D28) |
 
 ## Future
 

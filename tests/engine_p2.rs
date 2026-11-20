@@ -256,7 +256,10 @@ fn no_growth_during_spawn_phase_then_upstream_formula() {
             let mut expect = old.clone();
             expect.add_troops(rules::troop_increase_rate(&cfg, old));
             expect.add_gold(rules::gold_addition_rate(&cfg, old.kind()));
-            assert_eq!(new.troops(), expect.troops(), "{}", new.name());
+            // Bots also spend troops on attacks (P4), so troops are checked for the human only.
+            if new.kind() == PlayerType::Human {
+                assert_eq!(new.troops(), expect.troops(), "{}", new.name());
+            }
             assert_eq!(new.gold(), expect.gold(), "{}", new.name());
         }
     }

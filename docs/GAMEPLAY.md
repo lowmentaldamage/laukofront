@@ -74,6 +74,21 @@ the key is given after each number. This file grows with each port milestone.
 - Every 10 ticks: the player with the most tiles wins once they own more than 80% of the land
   (`game.win_percent`), or at the hard time limit of 170 minutes.
 
+## Implemented (P4): bots
+
+Port of upstream tribe AI (`TribeExecution`, `TribeAttackBehavior`, land parts of `AiAttackBehavior`).
+- Each bot draws its own personality from its id: acts every 40–80 ticks; attacks once its troops
+  reach 50–60% of its cap (trigger); keeps 30–40% of its cap at home when attacking a player
+  (reserve) and 10–20% when expanding (expand).
+- First action: expand into free land.
+- Then, while it still borders free land, it keeps expanding. Otherwise, once it has the trigger
+  ratio: strike back at whoever has the largest attack on it, else attack a random land neighbour
+  (humans and nations are skipped half the time).
+- An attack sends everything above the reserve. Bots only use the same attacks a human can.
+- Not yet: boat attacks and river crossings (transport ships), alliances and traitors.
+
 ## Coming next
 
-- **P4 bots:** upstream tribe AI (until then bots only spawn and grow).
+- **P5 Bevy client:** the map on screen, clicking to spawn and attack, HUD.
+- **Boats:** without transport ships, players on separate landmasses cannot reach each other; a
+  match can then only end at the 170-minute limit.

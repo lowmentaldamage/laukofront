@@ -100,3 +100,31 @@ exactly growth + 75% after ~20 ticks; opposing attacks cancel; same-target attac
 < 100-tile defender is wiped out and loses its gold; an encircled pocket is annexed, one touching
 unowned land is not; 80% wins, 70% does not; a 13-player, 600-tick random-attack match keeps every
 invariant and is deterministic. The tile heap pops in priority order with `f32` priorities.
+
+### 2026-11-20 — Port milestone P4 (bots)
+
+| Suite | Passed |
+|---|---|
+| unit tests in `src/` | 36 |
+| `tests/engine_p2.rs` | 10 |
+| `tests/engine_p3.rs` | 16 |
+| `tests/engine_p4.rs` | 4 |
+| **Total** | **66**, 0 failed |
+
+P4 covers: a 10-bot match (seed 3) reaches a winner by conquest (> 80% land, well before the time
+limit); bots expand past their spawn disks and later attack each other; every new bot attack
+targets a land neighbour and never carries more troops than the bot had; bots-only matches are
+deterministic. The P2 economy test now checks troops for the human only (bots spend troops).
+
+Bots-only matches (`cargo run --release --bin bot_match -- --size small --bots 10 --seed N`):
+
+| Seed | Result |
+|---|---|
+| 1 | stalled at 62% (2 bots on separate landmasses) → time-limit win at 170 min |
+| 2 | Bot 9 wins at 45.7 min |
+| 3 | Bot 9 wins at 36.5 min |
+| 4 | Bot 7 wins at 62.7 min |
+| 5 | still 4 alive at 66 min (water) |
+| 6 | Bot 5 wins at 32.3 min |
+| 7 | Bot 4 wins at 43.1 min |
+| 8 | Bot 5 wins at 63.5 min |

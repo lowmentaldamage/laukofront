@@ -184,3 +184,16 @@ One entry per decision: date, choice, reason, rejected options.
   numbers (indexes into the game's attack table) instead of upstream's random strings.
 - **Reason:** those features belong to later milestones; the hooks (`DefenderInfo.is_traitor`,
   `defender_has_defense_post`, `fallout_ratio`, `source_tile`) are in place.
+
+## D27. Bots without boats
+- **Date:** 2026-11-20
+- **Choice:** the tribe AI is ported for land only; boat attacks and shore-reachable neighbours
+  return "no attack" until transport ships are ported.
+- **Consequence:** on maps where survivors end up on different landmasses the match stalls and is
+  decided by the 170-minute limit. Measured with `bot_match` (10 bots, Small): 6 of 8 seeds end by
+  conquest after 32–64 game minutes; seeds 1 and 5 stall (D28 tracks the fix).
+
+## D28. Transport ships are the next engine milestone after the client
+- **Date:** 2026-11-20
+- **Choice:** boats (upstream `TransportShipExecution` and water pathfinding) come right after P5.
+- **Reason:** water separates landmasses on most generated maps; without boats matches stall.

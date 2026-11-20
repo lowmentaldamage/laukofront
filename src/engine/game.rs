@@ -181,6 +181,34 @@ impl Game {
         })
     }
 
+    /// Upstream `Player.nearby` (land neighbours only; river crossings need boats, a later
+    /// milestone): every owner of passable land next to `p`'s border, `None` = unowned land,
+    /// in first-seen order without duplicates.
+    pub fn nearby(&self, p: PlayerId) -> Vec<Option<PlayerId>> {
+        let mut out: Vec<Option<PlayerId>> = Vec::new();
+        let Some(pl) = self.player(p) else {
+            return out;
+        };
+        let mut buf = [0; 4];
+        for &t in &pl.border {
+            let n = self.map.neighbors4(t, &mut buf);
+            for &nb in &buf[..n] {
+                if !self.map.is_passable_land(nb) {
+                    continue;
+                }
+                let o = self.map.owner_id(nb);
+                if o == p || (o == 0 && self.map.has_fallout(nb)) {
+                    continue;
+                }
+                let entry = (o != 0).then_some(o);
+                if !out.contains(&entry) {
+                    out.push(entry);
+                }
+            }
+        }
+        out
+    }
+
     pub fn attack(&self, id: AttackId) -> Option<&Attack> {
         self.attacks.get(id as usize)
     }

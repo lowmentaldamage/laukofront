@@ -109,3 +109,21 @@ player launches a default attack at a random player or unowned land.
 - Worst single tick: 1.2 ms (Small), 2.0 ms (Medium), 3.1 ms (Large). At 10 Hz a 3 ms tick is
   still far from a 33 ms frame, but it is the first number near the budget. Likely cause: the
   simplified encirclement check flood-fills whole territories (D25). Recorded as a Stage 15 item.
+
+### 2026-11-20 — Port milestone P4: engine_bench with bot AI
+
+Same command as P3; bots now also run their own AI on top of the random attacks.
+
+| Map | Tiles | Bots | Setup (ms) | Ticks/s | Mean tick (µs) | Max tick (µs) | Owned tiles at end |
+|---|---|---|---|---|---|---|---|
+| Small | 400000 | 0 | 28.6 | 89510 | 11.17 | 367.70 | 35920 |
+| Small | 400000 | 10 | 28.9 | 12226 | 81.79 | 864.30 | 199068 |
+| Small | 400000 | 50 | 29.3 | 8472 | 118.03 | 871.60 | 199068 |
+| Medium | 900000 | 0 | 65.0 | 99436 | 10.06 | 347.80 | 35604 |
+| Medium | 900000 | 10 | 64.7 | 6898 | 144.97 | 1351.70 | 447834 |
+| Medium | 900000 | 50 | 64.9 | 4415 | 226.52 | 1784.10 | 447834 |
+| Large | 1600000 | 0 | 115.0 | 106039 | 9.43 | 331.40 | 35421 |
+| Large | 1600000 | 10 | 117.2 | 4679 | 213.71 | 2824.30 | 745640 |
+| Large | 1600000 | 50 | 115.2 | 2715 | 368.32 | 2128.80 | 796035 |
+
+A whole 10-bot Small match (~25 000 ticks) runs in 1–2 s of real time.

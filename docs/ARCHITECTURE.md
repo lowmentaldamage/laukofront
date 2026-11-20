@@ -18,10 +18,11 @@ laukofront ports the OpenFront engine (see `NOTICE.md`). Module names follow ups
 | `engine::attack` | `game/AttackImpl.ts`, `utils/FlatBinaryHeap.ts` | `Attack`, `TileHeap` | no |
 | `engine::attack_exec` | `AttackExecution`, `RetreatExecution`, `WinCheckExecution` | attacks, retreat, win | no |
 | `engine::clusters` | `PlayerExecution.removeClusters` (simplified, D25) | encirclement | no |
+| `engine::bots` | `TribeExecution`, `TribeAttackBehavior`, `AiAttackBehavior` (land) | bot AI | no |
 | `engine::runner` | `GameRunner.ts`, `ExecutionManager.ts` | match setup, `Intent` → execution | no |
 | `engine::util` | `Util.simpleHash`, `getSpawnTiles` | helpers | no |
 | `render`, `input`, `ui`, `menu` | — | Bevy client (P5) | yes |
-| `bin/engine_bench`, `bin/map_preview` | — | tools | no |
+| `bin/engine_bench`, `bin/map_preview`, `bin/bot_match` | — | tools | no |
 
 ## Allowed dependencies
 

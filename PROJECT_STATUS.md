@@ -1,7 +1,7 @@
 # Project status
 
 **Date:** 2026-11-20
-**State:** OpenFront engine port in progress. P0–P3 are done (engine lib, players, spawn, economy, attacks, retreat, encirclement, win check); P4 bots and P5 Bevy client are next. Not playable yet.
+**State:** OpenFront engine port in progress. P0–P4 are done: the engine plays complete bots-only matches. P5 (Bevy client) is next, then boats. Not playable by a human yet.
 The game is **not playable yet**: there is no window, map rendering or input. The simulation
 rules work and are tested headless.
 
@@ -28,7 +28,7 @@ rules work and are tested headless.
 ## Known issues
 
 - Encirclement is a simplified port (D25); worst single tick ~3 ms on the largest map.
-- Bots spawn and grow but do not attack yet (P4).
+- No boats yet: players on separate landmasses cannot reach each other (D27, D28).
 
 - The dev machine is high-end (Ryzen 9 7950X, RTX 4090); the "mid-range PC" frame target has not
   been measured on mid-range hardware.

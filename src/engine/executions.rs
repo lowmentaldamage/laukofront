@@ -7,6 +7,7 @@
 use crate::engine_lib::game_map::TileRef;
 use crate::engine_lib::random::PseudoRandom;
 
+use super::bots::TribeExecution;
 use super::clusters;
 use super::game::{Execution, Game};
 use super::player::{PlayerId, PlayerType};
@@ -133,6 +134,7 @@ impl Execution for SpawnExecution {
         }
         let had_spawned = player.has_spawned();
         let kind = player.kind();
+        let str_id = player.info().id.clone();
         let prev: Vec<TileRef> = player.tiles().to_vec();
         for &t in &prev {
             game.relinquish(t);
@@ -148,6 +150,9 @@ impl Execution for SpawnExecution {
         }
         if !had_spawned {
             game.add_execution(Box::new(PlayerExecution::new(self.player)));
+            if kind == PlayerType::Bot {
+                game.add_execution(Box::new(TribeExecution::new(self.player, &str_id)));
+            }
         }
         game.set_spawn_tile(self.player, center);
         // Single player: the human picking a spawn ends the spawn phase (upstream rule).

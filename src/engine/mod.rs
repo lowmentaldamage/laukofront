@@ -3,10 +3,11 @@
 //!
 //! Ported so far: players, rule formulas, tile conquest with border tracking, the execution loop
 //! with the spawn phase, spawning, per-player economy (P2); attacks, retreat, defeated-player
-//! takeover, encircled-territory annexation and the win check (P3).
+//! takeover, encircled-territory annexation and the win check (P3); bot AI (P4).
 
 pub mod attack;
 pub mod attack_exec;
+pub mod bots;
 pub mod clusters;
 pub mod executions;
 pub mod game;
