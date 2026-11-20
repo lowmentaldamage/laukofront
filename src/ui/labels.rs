@@ -4,8 +4,9 @@
 use bevy::prelude::*;
 use bevy::sprite::{Anchor, Text2dShadow};
 
-use super::{fmt_num, font, ACCENT};
+use super::{fmt_num, font, ACCENT, DANGER, GOOD};
 use crate::client::{GameState, MapRebuild, MatchStats};
+use crate::engine::diplomacy::REACTIONS;
 use crate::engine::{Game, PlayerId, HUMAN};
 use crate::render::camera::MapCamera;
 use crate::render::effects::HIGHLIGHT_SECS;
@@ -24,6 +25,7 @@ pub struct LabelPlacement {
     /// Text height in world units (tiles).
     pub size: f32,
     pub text: String,
+    pub color: Color,
 }
 
 #[derive(Resource, Default)]
@@ -88,11 +90,47 @@ pub fn place_labels(game: &Game) -> Vec<LabelPlacement> {
         }
         let size = ((n as f32).sqrt() * 0.13).clamp(2.0, 36.0);
         let name = if p.id() == HUMAN { "You" } else { p.name() };
+        let mut text = format!("{name}\n{}", fmt_num(p.troops() as f64));
+        let id = p.id();
+        let allied = game.is_allied(HUMAN, id);
+        if allied {
+            text.push_str("\nally");
+        }
+        if game.is_traitor(id) {
+            text.push_str("\nTRAITOR");
+        }
+        if game.targets(HUMAN).contains(&id)
+            || game
+                .allies(HUMAN)
+                .iter()
+                .any(|&a| game.targets(a).contains(&id))
+        {
+            text.push_str("\n(target)");
+        }
+        // The newest reaction this player showed to you or to everyone.
+        if let Some(r) = game
+            .reactions()
+            .iter()
+            .rev()
+            .find(|r| r.from == id && (r.to.is_none() || r.to == Some(HUMAN) || id == HUMAN))
+        {
+            text.push_str(&format!("\n\"{}\"", REACTIONS[r.what as usize]));
+        }
+        let color = if id == HUMAN {
+            ACCENT
+        } else if game.is_traitor(id) {
+            DANGER
+        } else if allied {
+            GOOD
+        } else {
+            Color::srgba(1.0, 1.0, 1.0, 0.92)
+        };
         out.push(LabelPlacement {
-            id: p.id(),
+            id,
             pos: tile_center(map, tile),
             size,
-            text: format!("{name}\n{}", fmt_num(p.troops() as f64)),
+            text,
+            color,
         });
     }
     out
@@ -110,17 +148,26 @@ fn compute(game: Res<GameState>, rebuild: Res<MapRebuild>, mut labels: ResMut<La
 fn sync_entities(
     mut commands: Commands,
     labels: Res<Labels>,
-    mut existing: Query<(Entity, &MapLabel, &mut Text2d, &mut Transform)>,
+    mut existing: Query<(
+        Entity,
+        &MapLabel,
+        &mut Text2d,
+        &mut Transform,
+        &mut TextColor,
+    )>,
 ) {
     if !labels.is_changed() {
         return;
     }
     let mut seen: Vec<PlayerId> = Vec::new();
-    for (e, l, mut text, mut tf) in existing.iter_mut() {
+    for (e, l, mut text, mut tf, mut color) in existing.iter_mut() {
         match labels.placements.iter().find(|p| p.id == l.0) {
             Some(p) => {
                 if text.0 != p.text {
                     text.0 = p.text.clone();
+                }
+                if color.0 != p.color {
+                    color.0 = p.color;
                 }
                 tf.translation = p.pos.extend(5.0);
                 tf.scale = Vec3::splat(p.size / RASTER_PX);
@@ -130,11 +177,7 @@ fn sync_entities(
         }
     }
     for p in labels.placements.iter().filter(|p| !seen.contains(&p.id)) {
-        let color = if p.id == HUMAN {
-            ACCENT
-        } else {
-            Color::srgba(1.0, 1.0, 1.0, 0.92)
-        };
+        let color = p.color;
         commands.spawn((
             Text2d::new(p.text.clone()),
             font(RASTER_PX),
@@ -207,15 +250,7 @@ mod tests {
     #[test]
     fn labels_sit_on_their_owners_land() {
         let cfg = GameConfig::load(GAME_CONFIG_PATH).unwrap();
-        let mut g = new_match(
-            cfg,
-            MatchSetup {
-                size: MapSize::Small,
-                seed: 6,
-                bots: 8,
-            },
-        )
-        .unwrap();
+        let mut g = new_match(cfg, MatchSetup::bots_only(MapSize::Small, 6, 8)).unwrap();
         for _ in 0..3_000 {
             run_turn(&mut g, &[]);
         }

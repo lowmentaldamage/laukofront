@@ -265,6 +265,13 @@ impl Execution for TransportShipExecution {
             self.finish(game, troops * (1.0 - malus));
             return;
         }
+        if let Some(o) = game.owner(dst) {
+            if game.is_friendly(self.attacker, o) {
+                // Upstream lands on the friend's coast and hands the troops back home.
+                self.finish(game, troops);
+                return;
+            }
+        }
         game.conquer(self.attacker, dst);
         game.add_execution(Box::new(AttackExecution::from_boat(
             self.attacker,
@@ -353,6 +360,7 @@ impl TradeExecution {
                 u.is_active()
                     && u.kind() == UnitKind::Port
                     && u.owner() != p.owner()
+                    && game.can_trade(u.owner(), p.owner())
                     && !u.under_construction(game.ticks())
                     && game.water().share_body(map, u.tile(), p.tile())
             })

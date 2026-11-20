@@ -51,6 +51,90 @@ pub struct GameConfig {
     pub boats: BoatRules,
     pub buildings: BuildingRules,
     pub weapons: WeaponRules,
+    pub diplomacy: DiplomacyRules,
+    /// Nation AI difficulty for this match (set by the match setup, not the file).
+    #[serde(skip)]
+    pub difficulty: Difficulty,
+}
+
+/// Upstream `Difficulty`: how strong and smart nations are.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, PartialOrd, Ord, Hash)]
+pub enum Difficulty {
+    Easy,
+    #[default]
+    Medium,
+    Hard,
+    Impossible,
+}
+
+impl Difficulty {
+    pub const ALL: [Difficulty; 4] = [
+        Difficulty::Easy,
+        Difficulty::Medium,
+        Difficulty::Hard,
+        Difficulty::Impossible,
+    ];
+
+    pub fn name(self) -> &'static str {
+        match self {
+            Difficulty::Easy => "easy",
+            Difficulty::Medium => "medium",
+            Difficulty::Hard => "hard",
+            Difficulty::Impossible => "impossible",
+        }
+    }
+
+    pub fn parse(s: &str) -> Option<Self> {
+        Self::ALL
+            .into_iter()
+            .find(|d| d.name() == s.to_ascii_lowercase())
+    }
+
+    /// Upstream `maxTroops` nation multiplier.
+    pub fn troop_cap_mult(self) -> f64 {
+        match self {
+            Difficulty::Easy => 0.5,
+            Difficulty::Medium => 0.75,
+            Difficulty::Hard => 1.0,
+            Difficulty::Impossible => 1.25,
+        }
+    }
+
+    /// Upstream `troopIncreaseRate` nation multiplier.
+    pub fn growth_mult(self) -> f64 {
+        match self {
+            Difficulty::Easy => 0.9,
+            Difficulty::Medium => 0.95,
+            Difficulty::Hard => 1.0,
+            Difficulty::Impossible => 1.05,
+        }
+    }
+
+    /// Upstream `startManpower` for nations.
+    pub fn start_troops(self) -> i64 {
+        match self {
+            Difficulty::Easy => 12_500,
+            Difficulty::Medium => 18_750,
+            Difficulty::Hard => 25_000,
+            Difficulty::Impossible => 31_250,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct DiplomacyRules {
+    pub alliance_duration_ticks: u64,
+    pub alliance_request_duration_ticks: u64,
+    pub alliance_request_cooldown_ticks: u64,
+    pub alliance_extension_prompt_ticks: u64,
+    pub traitor_duration_ticks: u64,
+    pub donate_cooldown_ticks: u64,
+    pub target_duration_ticks: u64,
+    pub target_cooldown_ticks: u64,
+    pub temporary_embargo_ticks: u64,
+    pub nuke_alliance_break_threshold: u32,
+    pub reaction_duration_ticks: u64,
 }
 
 #[derive(Debug, Clone, Deserialize)]

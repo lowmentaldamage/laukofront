@@ -13,6 +13,8 @@ Implemented in P5–P6 (`src/input/mod.rs`, `src/ui/`, `src/render/camera.rs`). 
 | Left click on one of your buildings | upgrade it (city, port, factory) |
 | Build bar (bottom) / Q E F G, then click your land | build city / port / factory / defense post |
 | Right click (while building) | cancel |
+| Right click a player's land | diplomacy menu: alliance, break, renew, embargo, send troops / gold, target, reactions |
+| accept / reject / renew (top-right panel) | answer alliance requests, renew an ending alliance |
 | Left click your warship, then water | move the warship |
 | Missile chosen (Z / X / C), then click | launch at that tile (blast radius shown under the cursor, enemy SAM ranges in blue) |
 | Left click elsewhere | a notice says why nothing happened |
@@ -39,12 +41,13 @@ Clicks on HUD panels never reach the map.
 | `N` | warship (click water near your port) |
 | `Z` `X` `C` | atom bomb / hydrogen bomb / MIRV |
 | `H` | show / hide the controls card |
-| `Esc` | cancel building, missile or warship selection; skip the tutorial |
+| `Esc` | cancel building, missile or warship selection; close the diplomacy menu; skip the tutorial |
 
 ## Command line (until the menu exists, P12)
 
 ```powershell
 laukofront --size small|medium|large --bots 20 --seed 123
+laukofront --nations 6 --difficulty easy|medium|hard|impossible
 laukofront --autoplay            # the game plays for you (demo)
 laukofront --perf-run 60         # 1080p frame-time measurement, then exit
 laukofront --screenshot shot.png --screenshot-at 10

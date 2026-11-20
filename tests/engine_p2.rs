@@ -20,15 +20,7 @@ fn turn_and_settle(g: &mut Game, intents: &[Intent]) {
 }
 
 fn game(seed: i64, bots: u32) -> Game {
-    new_match(
-        config(),
-        MatchSetup {
-            size: MapSize::Small,
-            seed,
-            bots,
-        },
-    )
-    .expect("match")
+    new_match(config(), MatchSetup::bots_only(MapSize::Small, seed, bots)).expect("match")
 }
 
 /// Ownership bookkeeping must always agree with the tile map.

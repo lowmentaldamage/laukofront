@@ -184,6 +184,18 @@ impl Execution for NukeExecution {
         if let Some(p) = game.player_mut(self.player) {
             p.remove_gold(cost);
         }
+        if self.kind == UnitKind::Mirv {
+            // Upstream MIRVExecution: the target player turns hostile and any alliance ends.
+            if let Some(t) = game.owner(self.target) {
+                if game.is_allied(self.player, t) {
+                    game.break_alliance(self.player, t);
+                }
+                game.update_relation(t, self.player, -100.0);
+                game.update_relation(self.player, t, -100.0);
+            }
+        } else {
+            super::diplomacy::nuke_breaks_alliances(game, self.player, self.kind, self.target);
+        }
         let cooldown = game.config().weapons.silo_cooldown_ticks;
         use_slot(game, silo, cooldown);
         let src = game.unit(silo).map(|u| u.tile()).unwrap_or(self.target);
@@ -412,7 +424,7 @@ impl Execution for SamExecution {
             .collect();
         for (nuke, owner, at) in nukes {
             for &(sam, sam_owner, sam_tile, level) in &sams {
-                if sam_owner == owner || !free_slot(game, sam, cooldown) {
+                if game.is_friendly(sam_owner, owner) || !free_slot(game, sam, cooldown) {
                     continue;
                 }
                 let r = sam_range(game, level);
@@ -561,7 +573,7 @@ impl Execution for WarshipExecution {
         // Pick a target every 5 ticks (or keep the current one while it lives and is in range).
         let keep = self.target.and_then(|t| game.unit(t)).is_some_and(|t| {
             t.is_active()
-                && t.owner() != me.owner()
+                && !game.is_friendly(t.owner(), me.owner())
                 && map.euclidean_dist_squared(t.tile(), me.tile()) <= r2
         });
         if !keep {
@@ -573,7 +585,7 @@ impl Execution for WarshipExecution {
                 .iter()
                 .filter(|u| {
                     u.is_active()
-                        && u.owner() != me.owner()
+                        && !game.is_friendly(u.owner(), me.owner())
                         && matches!(
                             u.kind(),
                             UnitKind::TransportShip | UnitKind::Warship | UnitKind::TradeShip

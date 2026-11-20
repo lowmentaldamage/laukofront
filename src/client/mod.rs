@@ -57,6 +57,10 @@ pub struct ClientSettings {
     pub build: Option<crate::engine::units::UnitKind>,
     /// Your warship chosen by clicking it; the next water click moves it.
     pub selected_ship: Option<crate::engine::units::UnitId>,
+    /// Player whose diplomacy menu is open (right click on their land).
+    pub player_menu: Option<PlayerId>,
+    /// Screen position the menu opened at.
+    pub menu_pos: Vec2,
 }
 
 impl Default for ClientSettings {
@@ -68,6 +72,8 @@ impl Default for ClientSettings {
             show_help: false,
             build: None,
             selected_ship: None,
+            player_menu: None,
+            menu_pos: Vec2::ZERO,
         }
     }
 }
@@ -225,6 +231,97 @@ pub fn tick_notices(
     out
 }
 
+/// Notifications for this tick's diplomacy events that concern the human (betrayals between
+/// others too, since they change who is safe to trust). Pure so it can be tested.
+pub fn diplo_notices(g: &Game) -> Vec<(String, NoticeKind)> {
+    use crate::engine::diplomacy::DiploEvent as E;
+    let name = |p: PlayerId| {
+        g.player(p)
+            .map_or("?".to_string(), |x| x.name().to_string())
+    };
+    let fmt = |n: i64| crate::ui::fmt_num(n as f64);
+    let mut out = Vec::new();
+    for e in g.diplo_events() {
+        let n = match *e {
+            E::Requested { from, to } if to == HUMAN => Some((
+                format!("{} asks for an alliance (top right)", name(from)),
+                NoticeKind::Good,
+            )),
+            E::Accepted { a, b } if a == HUMAN || b == HUMAN => {
+                let o = if a == HUMAN { b } else { a };
+                Some((
+                    format!("You are now allied with {}", name(o)),
+                    NoticeKind::Good,
+                ))
+            }
+            E::Rejected { from, to } if from == HUMAN => Some((
+                format!("{} rejected your alliance request", name(to)),
+                NoticeKind::Warning,
+            )),
+            E::Broken { traitor, betrayed } if betrayed == HUMAN => Some((
+                format!(
+                    "{} betrayed you! They defend at half strength for 30 s",
+                    name(traitor)
+                ),
+                NoticeKind::Danger,
+            )),
+            E::Broken { traitor, betrayed } if traitor != HUMAN => Some((
+                format!("{} betrayed {}", name(traitor), name(betrayed)),
+                NoticeKind::Info,
+            )),
+            E::Expired { a, b } if a == HUMAN || b == HUMAN => {
+                let o = if a == HUMAN { b } else { a };
+                Some((
+                    format!("Alliance with {} ended", name(o)),
+                    NoticeKind::Warning,
+                ))
+            }
+            E::Renewed { a, b } if a == HUMAN || b == HUMAN => {
+                let o = if a == HUMAN { b } else { a };
+                Some((
+                    format!("Alliance with {} renewed", name(o)),
+                    NoticeKind::Good,
+                ))
+            }
+            E::RenewAsked { from, to } if to == HUMAN => Some((
+                format!("{} wants to renew your alliance", name(from)),
+                NoticeKind::Info,
+            )),
+            E::DonatedTroops { from, to, amount } if to == HUMAN => Some((
+                format!("{} sent you {} troops", name(from), fmt(amount)),
+                NoticeKind::Good,
+            )),
+            E::DonatedGold { from, to, amount } if to == HUMAN => Some((
+                format!("{} sent you {} gold", name(from), fmt(amount)),
+                NoticeKind::Good,
+            )),
+            E::Embargo { from, to, on } if to == HUMAN => Some((
+                if on {
+                    format!("{} stopped trading with you", name(from))
+                } else {
+                    format!("{} trades with you again", name(from))
+                },
+                NoticeKind::Info,
+            )),
+            E::Target { from, to } if g.is_allied(from, HUMAN) => Some((
+                format!("Your ally {} marked {} as a target", name(from), name(to)),
+                NoticeKind::Info,
+            )),
+            E::Target { from, to } if to == HUMAN => Some((
+                format!("{} marked you as a target", name(from)),
+                NoticeKind::Warning,
+            )),
+            E::NukesCancelled { launcher, other } if launcher == HUMAN || other == HUMAN => Some((
+                "Missiles between new allies were called off".to_string(),
+                NoticeKind::Info,
+            )),
+            _ => None,
+        };
+        out.extend(n);
+    }
+    out
+}
+
 #[allow(clippy::too_many_arguments)]
 fn run_tick(
     mut game: ResMut<GameState>,
@@ -264,6 +361,9 @@ fn run_tick(
         captures.0.drain(..100_000);
     }
     for (text, kind) in tick_notices(g, &before.alive, &before.incoming, before.my_tiles) {
+        notices.push_kind(text, kind);
+    }
+    for (text, kind) in diplo_notices(g) {
         notices.push_kind(text, kind);
     }
     for id in nukes_at_me(g) {
@@ -334,11 +434,15 @@ fn restart(
     mut stats: ResMut<MatchStats>,
     mut rebuild: ResMut<MapRebuild>,
     mut pending: ResMut<PendingIntents>,
+    mut settings: ResMut<ClientSettings>,
 ) {
     if !req.0 {
         return;
     }
     req.0 = false;
+    settings.player_menu = None;
+    settings.selected_ship = None;
+    settings.build = None;
     let mut next = setup.0;
     next.seed = next.seed.wrapping_add(1);
     match new_match(game.0.config().clone(), next) {
@@ -379,15 +483,7 @@ mod tests {
     #[test]
     fn incoming_attacks_and_eliminations_become_notices() {
         let cfg = GameConfig::load(GAME_CONFIG_PATH).unwrap();
-        let mut g = new_match(
-            cfg,
-            MatchSetup {
-                size: MapSize::Small,
-                seed: 3,
-                bots: 10,
-            },
-        )
-        .unwrap();
+        let mut g = new_match(cfg, MatchSetup::bots_only(MapSize::Small, 3, 10)).unwrap();
         let mut seen_elimination = false;
         for _ in 0..8_000 {
             let b = snapshot(&g);
@@ -402,6 +498,61 @@ mod tests {
             seen_elimination,
             "bots eliminate each other within 8000 ticks on seed 3"
         );
+    }
+
+    #[test]
+    fn alliance_requests_and_answers_become_notices() {
+        let cfg = GameConfig::load(GAME_CONFIG_PATH).unwrap();
+        let mut g = new_match(cfg, MatchSetup::bots_only(MapSize::Small, 4, 2)).unwrap();
+        run_turn(&mut g, &[]);
+        let map = g.map();
+        let tile = (0..map.num_tiles())
+            .find(|&t| crate::engine::util::spawn_tiles(map, t, 4, true).is_some())
+            .unwrap();
+        run_turn(
+            &mut g,
+            &[Intent::Spawn {
+                player: HUMAN,
+                tile,
+            }],
+        );
+        while g.in_spawn_phase() {
+            run_turn(&mut g, &[]);
+        }
+        let mut texts = Vec::new();
+        let mut step = |g: &mut Game, i: &[Intent]| {
+            run_turn(g, i);
+            texts.extend(diplo_notices(g).into_iter().map(|n| n.0));
+        };
+        step(
+            &mut g,
+            &[Intent::AllianceRequest {
+                player: 2,
+                to: HUMAN,
+            }],
+        );
+        step(&mut g, &[]);
+        step(
+            &mut g,
+            &[Intent::AllianceReply {
+                player: HUMAN,
+                from: 2,
+                accept: true,
+            }],
+        );
+        step(&mut g, &[]);
+        step(
+            &mut g,
+            &[Intent::BreakAlliance {
+                player: 2,
+                with: HUMAN,
+            }],
+        );
+        step(&mut g, &[]);
+        let all = texts.join(" | ");
+        assert!(all.contains("asks for an alliance"), "{all}");
+        assert!(all.contains("You are now allied with"), "{all}");
+        assert!(all.contains("betrayed you"), "{all}");
     }
 
     #[test]

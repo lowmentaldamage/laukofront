@@ -40,7 +40,7 @@ fn run() -> Result<(), String> {
     for size in MapSize::ALL {
         for bots in BOTS {
             let start = Instant::now();
-            let mut g = new_match(cfg.clone(), MatchSetup { size, seed, bots })?;
+            let mut g = new_match(cfg.clone(), MatchSetup::bots_only(size, seed, bots))?;
             run_turn(&mut g, &[]);
             run_turn(&mut g, &[]);
             let setup = start.elapsed();

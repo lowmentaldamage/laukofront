@@ -209,9 +209,15 @@ impl Execution for PlayerExecution {
         let inc = rules::troop_increase_rate(game.config(), p);
         let gold = rules::gold_addition_rate(game.config(), p.kind());
         if let Some(p) = game.player_mut(self.player) {
+            p.decay_relations();
             p.add_troops(inc);
             p.add_gold(gold);
         }
+        // Upstream expires each player's alliances here; one sweep per tick does the same.
+        if game.players().iter().find(|x| x.is_alive()).map(|x| x.id()) == Some(self.player) {
+            game.expire_alliances();
+        }
+        game.expire_embargoes(self.player);
 
         let every = game.config().attack_logic.cluster_check_ticks as i64;
         let Some(p) = game.player(self.player) else {

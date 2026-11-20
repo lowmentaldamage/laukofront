@@ -8,12 +8,12 @@ use crate::engine_lib::game_map::TerrainType;
 
 use super::player::{Player, PlayerType};
 
-/// Upstream `startManpower` (non-tutorial, non-cheat; nations use the human value until the
-/// nation milestone adds difficulty).
+/// Upstream `startManpower` (non-tutorial, non-cheat): nations by difficulty.
 pub fn start_manpower(cfg: &GameConfig, kind: PlayerType) -> i64 {
     match kind {
         PlayerType::Bot => cfg.troops.bot_start,
-        PlayerType::Human | PlayerType::Nation => cfg.troops.human_start,
+        PlayerType::Human => cfg.troops.human_start,
+        PlayerType::Nation => cfg.difficulty.start_troops(),
     }
 }
 
@@ -32,7 +32,8 @@ pub fn max_troops(cfg: &GameConfig, kind: PlayerType, tiles: u32) -> f64 {
         t.cap_multiplier * (pow(tiles as f64, t.cap_tile_exponent) * t.cap_tile_coeff + t.cap_base);
     match kind {
         PlayerType::Bot => cap / t.bot_cap_divisor,
-        PlayerType::Human | PlayerType::Nation => cap,
+        PlayerType::Human => cap,
+        PlayerType::Nation => cap * cfg.difficulty.troop_cap_mult(),
     }
 }
 
@@ -45,7 +46,8 @@ pub fn troop_cap(cfg: &GameConfig, p: &Player) -> f64 {
         + cfg.buildings.city_troop_increase * p.city_levels() as f64;
     match p.kind() {
         PlayerType::Bot => base / t.bot_cap_divisor,
-        PlayerType::Human | PlayerType::Nation => base,
+        PlayerType::Human => base,
+        PlayerType::Nation => base * cfg.difficulty.troop_cap_mult(),
     }
 }
 
@@ -59,6 +61,9 @@ pub fn troop_increase_rate(cfg: &GameConfig, p: &Player) -> f64 {
     to_add *= 1.0 - troops / max;
     if p.kind() == PlayerType::Bot {
         to_add *= t.bot_growth_multiplier;
+    }
+    if p.kind() == PlayerType::Nation {
+        to_add *= cfg.difficulty.growth_mult();
     }
     (troops + to_add).min(max) - troops
 }

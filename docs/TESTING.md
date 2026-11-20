@@ -201,3 +201,24 @@ Manual check (later the same day, PC free): autoplay screenshot shows the left H
 attacks and retreat buttons, the build bar with the weapons group and prices, defense-post icons,
 labels and minimap. Frame-time runs: 0 frames over 33 ms (see PERFORMANCE.md). Cosmetic issues
 noted: long notices wrap onto two lines; map labels show faintly through the leaderboard panel.
+
+### 2026-11-20 — Port milestone P10 (diplomacy and nations)
+
+**132 passed, 0 failed** (70 unit, 10 / 16 / 4 / 13 / 6 / 13 in
+`engine_p2/p3/p4/p7_p8/p9/p10`).
+
+New: request and accept, no attacks between allies, asking back accepts and pulls back running
+attacks, requests expire after 20 s with a 30 s cooldown, breaking makes a 30 s traitor who
+defends worse, alliances expire unless both renew, donations only to allies with a cooldown,
+embargo blocks trade, targets and reactions expire, nuking an ally breaks the alliance, allying
+cancels nukes in flight, difficulty sets nation troops, a nation match ends with a nation winner
+that built, nation matches are deterministic; diplomacy notices; menu actions and panel rows.
+
+`bot_match` with 8 bots and 4 nations, seeds 1-6, every difficulty: **24 of 24 matches end with a
+winner** (6-29 game minutes). Bots-only matches (no nations): seed 3 ends at 36 min, seeds 1 and 5
+stall with bots on separate islands, as upstream (tribes do not cross oceans; nations do). Seed 5
+ended before only because of the water-border bug fixed in D40.
+
+Manual check: autoplay screenshot with 6 nations shows the diplomacy menu on the biggest nation
+(alliance, embargo, target, reactions, info line with relation), nation names on the map and in
+the leaderboard.

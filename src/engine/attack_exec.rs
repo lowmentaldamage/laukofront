@@ -215,6 +215,16 @@ impl Execution for AttackExecution {
         if let Some(p) = game.player_mut(self.owner) {
             p.attacks_sent += 1;
         }
+        // Upstream: the target dislikes the attacker (more on harder difficulties).
+        if let Some(t) = self.target {
+            let change = match game.config().difficulty {
+                crate::config::Difficulty::Easy => -60.0,
+                crate::config::Difficulty::Medium => -70.0,
+                crate::config::Difficulty::Hard => -80.0,
+                crate::config::Difficulty::Impossible => -100.0,
+            };
+            game.update_relation(t, self.owner, change);
+        }
         match self.source_tile {
             Some(t) => self.add_neighbors(game, t),
             None => self.refresh_to_conquer(game),
@@ -295,6 +305,11 @@ impl Execution for AttackExecution {
         if attack.retreating() {
             return;
         }
+        // An alliance made after the attack started: pull back.
+        if self.target.is_some_and(|t| game.is_friendly(self.owner, t)) {
+            self.retreat(game, 0.0);
+            return;
+        }
         let mut troop_count = attack.troops();
         let border_size = attack.border_size() as f64 + self.random.next_int(0, 5) as f64;
         let target_id = self.target_small_id();
@@ -339,7 +354,7 @@ impl Execution for AttackExecution {
                         kind: d.kind(),
                         num_tiles: d.num_tiles(),
                         troops: d.troops() as f64,
-                        is_traitor: false,
+                        is_traitor: game.is_traitor(d.id()),
                         is_disconnected_teammate: false,
                     }),
                 defender_has_defense_post: self.target.is_some_and(|d| {

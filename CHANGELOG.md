@@ -30,3 +30,6 @@ Versions follow the build guide milestones. `1.0.0` is the finished game.
   income; build bar; ship and building icons; measured gold income in the HUD.
 - P9: missile silos, SAM launchers, warships, atom and hydrogen bombs, MIRVs, fallout; target
   preview, explosions, SAM and shell effects, nuke warnings.
+- P10: alliances (request, accept, renew, break), traitors, relations, embargoes, donations,
+  targets, reactions; AI nations with four difficulties; diplomacy menu and panel; ally and
+  traitor colours on the map and leaderboard.

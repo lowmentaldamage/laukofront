@@ -7,7 +7,7 @@
 use std::process::ExitCode;
 use std::time::Instant;
 
-use laukofront::config::{GameConfig, MapSize, GAME_CONFIG_PATH};
+use laukofront::config::{Difficulty, GameConfig, MapSize, GAME_CONFIG_PATH};
 use laukofront::engine::{new_match, run_turn, Game, MatchSetup};
 
 fn leader(g: &Game) -> String {
@@ -26,6 +26,7 @@ fn leader(g: &Game) -> String {
 
 fn run() -> Result<(), String> {
     let (mut size, mut bots, mut seed, mut max_ticks) = (MapSize::Small, 10u32, 1i64, 60_000u64);
+    let (mut nations, mut difficulty) = (0u32, Difficulty::Medium);
     let mut it = std::env::args().skip(1);
     while let Some(a) = it.next() {
         let v = it.next().ok_or(format!("{a} needs a value"))?;
@@ -40,12 +41,23 @@ fn run() -> Result<(), String> {
             }
             "--bots" => bots = v.parse().map_err(|e| format!("--bots: {e}"))?,
             "--seed" => seed = v.parse().map_err(|e| format!("--seed: {e}"))?,
+            "--nations" => nations = v.parse().map_err(|e| format!("--nations: {e}"))?,
+            "--difficulty" => difficulty = Difficulty::parse(&v).ok_or("unknown difficulty")?,
             "--max-ticks" => max_ticks = v.parse().map_err(|e| format!("--max-ticks: {e}"))?,
             o => return Err(format!("unknown argument {o}")),
         }
     }
     let cfg = GameConfig::load(GAME_CONFIG_PATH).map_err(|e| e.to_string())?;
-    let mut g = new_match(cfg, MatchSetup { size, seed, bots })?;
+    let mut g = new_match(
+        cfg,
+        MatchSetup {
+            size,
+            seed,
+            bots,
+            nations,
+            difficulty,
+        },
+    )?;
     let start = Instant::now();
     while g.winner().is_none() && g.ticks() < max_ticks {
         run_turn(&mut g, &[]);
@@ -68,12 +80,46 @@ fn run() -> Result<(), String> {
                     .map_or("unowned land".into(), |q| q.name().to_string())
             })
             .collect();
+        let allies: Vec<&str> = g
+            .allies(p.id())
+            .into_iter()
+            .filter_map(|a| g.player(a).map(|q| q.name()))
+            .collect();
         println!(
-            "  {}: {} tiles, land neighbours: {:?}",
+            "  {}: {} tiles, {} troops, {} gold, {} units, land neighbours: {:?}, allies: {:?}",
             p.name(),
             p.num_tiles(),
-            near
+            p.troops(),
+            p.gold(),
+            p.units().len(),
+            near,
+            allies
         );
+    }
+    if std::env::var("BOT_MATCH_DEBUG").is_ok() {
+        use laukofront::engine::units::UnitKind;
+        for p in g.alive_players() {
+            let kinds: Vec<String> = [
+                UnitKind::City,
+                UnitKind::Port,
+                UnitKind::Factory,
+                UnitKind::DefensePost,
+                UnitKind::MissileSilo,
+                UnitKind::SamLauncher,
+                UnitKind::Warship,
+                UnitKind::TransportShip,
+            ]
+            .iter()
+            .map(|&k| format!("{k:?}={}", g.unit_count(p.id(), k)))
+            .collect();
+            println!(
+                "  {} units: {}; outgoing attacks {}",
+                p.name(),
+                kinds.join(" "),
+                p.outgoing_attacks().len()
+            );
+        }
+        println!("  fallout tiles: {}", g.map().num_tiles_with_fallout());
     }
     let owned: u32 = g.players().iter().map(|p| p.num_tiles()).sum();
     println!(

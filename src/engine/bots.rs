@@ -14,16 +14,16 @@ use super::rules;
 use super::util::simple_hash;
 
 /// A bot's attack decisions (upstream `TribeAttackBehavior` on `AiAttackBehavior`).
-struct AttackBehavior {
-    trigger_ratio: f64,
-    reserve_ratio: f64,
-    expand_ratio: f64,
+pub(crate) struct AttackBehavior {
+    pub(crate) trigger_ratio: f64,
+    pub(crate) reserve_ratio: f64,
+    pub(crate) expand_ratio: f64,
     /// (tick, troops) already sent this tick, so several sends in one tick share the pool.
-    sent_this_tick: Option<(u64, f64)>,
+    pub(crate) sent_this_tick: Option<(u64, f64)>,
 }
 
 impl AttackBehavior {
-    fn home_troops(&self, game: &Game, me: PlayerId) -> f64 {
+    pub(crate) fn home_troops(&self, game: &Game, me: PlayerId) -> f64 {
         let troops = game.player(me).map_or(0.0, |p| p.troops() as f64);
         match self.sent_this_tick {
             Some((t, sent)) if t == game.ticks() => (troops - sent).max(0.0),
@@ -31,19 +31,24 @@ impl AttackBehavior {
         }
     }
 
-    fn reserve_basis(&self, game: &Game, me: PlayerId) -> f64 {
+    pub(crate) fn reserve_basis(&self, game: &Game, me: PlayerId) -> f64 {
         game.player(me).map_or(0.0, |p| {
             rules::max_troops(game.config(), p.kind(), p.num_tiles())
         })
     }
 
-    fn has_trigger_ratio_troops(&self, game: &Game, me: PlayerId) -> bool {
+    pub(crate) fn has_trigger_ratio_troops(&self, game: &Game, me: PlayerId) -> bool {
         self.home_troops(game, me) / self.reserve_basis(game, me) >= self.trigger_ratio
     }
 
     /// Upstream `reserveTroops`: keep `reserve_ratio` of the cap when attacking a player,
     /// `expand_ratio` when expanding into free land.
-    fn reserve_troops(&self, game: &Game, me: PlayerId, target: Option<PlayerId>) -> f64 {
+    pub(crate) fn reserve_troops(
+        &self,
+        game: &Game,
+        me: PlayerId,
+        target: Option<PlayerId>,
+    ) -> f64 {
         let ratio = if target.is_some() {
             self.reserve_ratio
         } else {
@@ -52,7 +57,7 @@ impl AttackBehavior {
         self.reserve_basis(game, me) * ratio
     }
 
-    fn send_land_attack(
+    pub(crate) fn send_land_attack(
         &mut self,
         game: &mut Game,
         me: PlayerId,
@@ -74,7 +79,12 @@ impl AttackBehavior {
     }
 
     /// Upstream `sendAttack`: land attack if we share a border, otherwise a boat.
-    fn send_attack(&mut self, game: &mut Game, me: PlayerId, target: Option<PlayerId>) -> bool {
+    pub(crate) fn send_attack(
+        &mut self,
+        game: &mut Game,
+        me: PlayerId,
+        target: Option<PlayerId>,
+    ) -> bool {
         if game.shares_border_with(me, target) {
             return self.send_land_attack(game, me, target);
         }
@@ -84,7 +94,7 @@ impl AttackBehavior {
         }
     }
 
-    fn record_send(&mut self, game: &Game, troops: f64) {
+    pub(crate) fn record_send(&mut self, game: &Game, troops: f64) {
         let tick = game.ticks();
         let already = match self.sent_this_tick {
             Some((t, s)) if t == tick => s,
@@ -94,7 +104,12 @@ impl AttackBehavior {
     }
 
     /// Upstream `sendBoatAttack`: a fifth of home troops to the coast of `target` nearest ours.
-    fn send_boat_attack(&mut self, game: &mut Game, me: PlayerId, target: PlayerId) -> bool {
+    pub(crate) fn send_boat_attack(
+        &mut self,
+        game: &mut Game,
+        me: PlayerId,
+        target: PlayerId,
+    ) -> bool {
         let map = game.map();
         let Some(t) = game.player(target) else {
             return false;
@@ -151,7 +166,7 @@ impl AttackBehavior {
 
     /// Upstream `sendBoatAttackToNearbyTerraNullius`: from every 10th coast tile, look 5 tiles
     /// across the water for free land and send an expansion boat there.
-    fn send_boat_to_free_land(&mut self, game: &mut Game, me: PlayerId) -> bool {
+    pub(crate) fn send_boat_to_free_land(&mut self, game: &mut Game, me: PlayerId) -> bool {
         let map = game.map();
         let Some(mine) = game.player(me) else {
             return false;
@@ -193,7 +208,11 @@ impl AttackBehavior {
     }
 
     /// Upstream `findIncomingAttackPlayer`: the attacker with the largest incoming attack.
-    fn find_incoming_attack_player(&self, game: &Game, me: PlayerId) -> Option<PlayerId> {
+    pub(crate) fn find_incoming_attack_player(
+        &self,
+        game: &Game,
+        me: PlayerId,
+    ) -> Option<PlayerId> {
         let mut best: Option<(PlayerId, f64)> = None;
         for id in game.incoming_attacks(me) {
             if let Some(a) = game.attack(id) {
@@ -212,6 +231,17 @@ impl AttackBehavior {
         }
         if let Some(attacker) = self.find_incoming_attack_player(game, me) {
             if self.send_attack(game, me, Some(attacker)) {
+                return;
+            }
+        }
+        // Upstream: a neighbouring traitor is the preferred enemy.
+        let traitor = game
+            .nearby(me)
+            .into_iter()
+            .flatten()
+            .find(|&p| game.is_traitor(p) && !game.is_friendly(me, p));
+        if let Some(t) = traitor {
+            if self.send_attack(game, me, Some(t)) {
                 return;
             }
         }

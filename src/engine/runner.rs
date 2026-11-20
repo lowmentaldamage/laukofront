@@ -1,15 +1,21 @@
 //! Match setup and the intent -> execution step. Port of the single-player parts of upstream
 //! `GameRunner.ts` and `ExecutionManager.ts` (`Executor.createExec`).
 
-use crate::config::{GameConfig, MapSize};
+use crate::config::{Difficulty, GameConfig, MapSize};
 use crate::engine_lib::game_map::TileRef;
 use crate::engine_lib::terrain;
 
 use super::attack::AttackId;
 use super::attack_exec::{AttackExecution, RetreatExecution, WinCheckExecution};
 use super::boats::{BoatRetreatExecution, TradeExecution, TransportShipExecution};
+use super::diplomacy::{
+    AllianceExtensionExecution, AllianceReplyExecution, AllianceRequestExecution,
+    BreakAllianceExecution, DonateExecution, EmbargoExecution, ReactionExecution,
+    TargetPlayerExecution,
+};
 use super::executions::{SpawnExecution, SpawnTimerExecution};
 use super::game::Game;
+use super::nations::{nation_name, NationExecution};
 use super::player::{PlayerId, PlayerInfo, PlayerType};
 use super::structures::{ConstructionExecution, FactoryExecution, UpgradeExecution};
 use super::units::{UnitId, UnitKind};
@@ -59,6 +65,44 @@ pub enum Intent {
         unit: UnitId,
         tile: TileRef,
     },
+    /// Ask `to` for an alliance (accepts if `to` already asked).
+    AllianceRequest { player: PlayerId, to: PlayerId },
+    /// Answer `from`'s alliance request.
+    AllianceReply {
+        player: PlayerId,
+        from: PlayerId,
+        accept: bool,
+    },
+    /// Break the alliance with `with` (you become a traitor).
+    BreakAlliance { player: PlayerId, with: PlayerId },
+    /// Agree to renew the alliance with `with` (renews when both agree).
+    RenewAlliance { player: PlayerId, with: PlayerId },
+    /// Start or stop trading with `with`.
+    Embargo {
+        player: PlayerId,
+        with: PlayerId,
+        on: bool,
+    },
+    /// Send troops to an ally (`None`: a third of yours).
+    DonateTroops {
+        player: PlayerId,
+        to: PlayerId,
+        troops: Option<f64>,
+    },
+    /// Send gold to an ally (`None`: a third of yours).
+    DonateGold {
+        player: PlayerId,
+        to: PlayerId,
+        gold: Option<i64>,
+    },
+    /// Mark `target` for your allies.
+    Target { player: PlayerId, target: PlayerId },
+    /// Show a reaction (index into `diplomacy::REACTIONS`) to one player or everyone.
+    Reaction {
+        player: PlayerId,
+        to: Option<PlayerId>,
+        what: u8,
+    },
 }
 
 /// What a single-player match is created with.
@@ -67,6 +111,31 @@ pub struct MatchSetup {
     pub size: MapSize,
     pub seed: i64,
     pub bots: u32,
+    /// AI nations (stronger than bots: they ally, build, sail and nuke).
+    pub nations: u32,
+    pub difficulty: Difficulty,
+}
+
+impl MatchSetup {
+    /// A match with only bots (no nations), medium difficulty.
+    pub fn bots_only(size: MapSize, seed: i64, bots: u32) -> Self {
+        Self {
+            size,
+            seed,
+            bots,
+            nations: 0,
+            difficulty: Difficulty::Medium,
+        }
+    }
+
+    /// Default number of nations for a map size.
+    pub fn default_nations(size: MapSize) -> u32 {
+        match size {
+            MapSize::Small => 3,
+            MapSize::Medium => 6,
+            MapSize::Large => 10,
+        }
+    }
 }
 
 /// Player id of the human in a match built by `new_match`.
@@ -75,10 +144,13 @@ pub const HUMAN: PlayerId = 1;
 /// Builds a match: generates the map, adds the human (id 1) and `bots` bots, and queues the
 /// spawn timer and a random spawn for every bot. Bots spawn on the first tick; the human spawns
 /// by sending `Intent::Spawn` during the spawn phase.
-pub fn new_match(config: GameConfig, setup: MatchSetup) -> Result<Game, String> {
+pub fn new_match(mut config: GameConfig, setup: MatchSetup) -> Result<Game, String> {
+    config.difficulty = setup.difficulty;
     let params = config.terrain_params(setup.size);
     let map = terrain::generate(&params, setup.seed).ok_or("map size too small")?;
-    if setup.bots as usize + 1 > crate::engine_lib::game_map::PLAYER_ID_MASK as usize {
+    if (setup.bots + setup.nations) as usize + 1
+        > crate::engine_lib::game_map::PLAYER_ID_MASK as usize
+    {
         return Err(format!("too many bots: {}", setup.bots));
     }
     let mut game = Game::new(config, map, format!("laukofront-{}", setup.seed));
@@ -96,6 +168,26 @@ pub fn new_match(config: GameConfig, setup: MatchSetup) -> Result<Game, String> 
             PlayerType::Bot,
         ));
         game.add_execution(Box::new(SpawnExecution::new(id, None, false)));
+    }
+    let game_id = game.game_id().to_string();
+    let mut used: Vec<String> = Vec::new();
+    for i in 1..=setup.nations {
+        let mut name = nation_name(setup.seed, i);
+        let mut k = 0;
+        while used.contains(&name) {
+            k += 1;
+            name = nation_name(setup.seed, i + 1000 * k);
+        }
+        used.push(name.clone());
+        let sid = format!("nation_{i}");
+        let id = game.add_player(PlayerInfo::new(sid.clone(), name, PlayerType::Nation));
+        game.add_execution(Box::new(SpawnExecution::new(id, None, false)));
+        game.add_execution(Box::new(NationExecution::new(
+            id,
+            &sid,
+            &game_id,
+            setup.difficulty,
+        )));
     }
     Ok(game)
 }
@@ -141,6 +233,37 @@ pub fn run_turn(game: &mut Game, intents: &[Intent]) {
             }
             Intent::MoveWarship { player, unit, tile } => {
                 game.add_execution(Box::new(MoveWarshipExecution::new(player, unit, tile)));
+            }
+            Intent::AllianceRequest { player, to } => {
+                game.add_execution(Box::new(AllianceRequestExecution::new(player, to)));
+            }
+            Intent::AllianceReply {
+                player,
+                from,
+                accept,
+            } => {
+                game.add_execution(Box::new(AllianceReplyExecution::new(from, player, accept)));
+            }
+            Intent::BreakAlliance { player, with } => {
+                game.add_execution(Box::new(BreakAllianceExecution::new(player, with)));
+            }
+            Intent::RenewAlliance { player, with } => {
+                game.add_execution(Box::new(AllianceExtensionExecution::new(player, with)));
+            }
+            Intent::Embargo { player, with, on } => {
+                game.add_execution(Box::new(EmbargoExecution::new(player, with, on)));
+            }
+            Intent::DonateTroops { player, to, troops } => {
+                game.add_execution(Box::new(DonateExecution::troops(player, to, troops)));
+            }
+            Intent::DonateGold { player, to, gold } => {
+                game.add_execution(Box::new(DonateExecution::gold(player, to, gold)));
+            }
+            Intent::Target { player, target } => {
+                game.add_execution(Box::new(TargetPlayerExecution::new(player, target)));
+            }
+            Intent::Reaction { player, to, what } => {
+                game.add_execution(Box::new(ReactionExecution::new(player, to, what)));
             }
         }
     }

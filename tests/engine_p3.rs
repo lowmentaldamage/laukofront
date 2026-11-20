@@ -471,15 +471,7 @@ fn no_winner_below_eighty_percent() {
 
 /// Every player keeps launching attacks at random neighbours (or unowned land).
 fn chaos_match(seed: i64, ticks: u32) -> Game {
-    let mut g = new_match(
-        config(),
-        MatchSetup {
-            size: MapSize::Small,
-            seed,
-            bots: 12,
-        },
-    )
-    .unwrap();
+    let mut g = new_match(config(), MatchSetup::bots_only(MapSize::Small, seed, 12)).unwrap();
     run_turn(&mut g, &[]);
     run_turn(&mut g, &[]);
     let map = g.map();

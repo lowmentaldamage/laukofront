@@ -24,6 +24,8 @@ laukofront ports the OpenFront engine (see `NOTICE.md`). Module names follow ups
 | `engine::boats` | `TransportShipExecution`, `BoatRetreatExecution`, `TransportShipUtils`, trade (D36) | ships | no |
 | `engine::structures` | `ConstructionExecution`, `UpgradeStructureExecution`, unit costs, factories (D36) | buildings | no |
 | `engine::weapons` | `NukeExecution`, `MIRVExecution`, `SAMLauncherExecution`, `WarshipExecution`, `MoveWarshipExecution` (simplified, D39) | missiles, SAMs, warships | no |
+| `engine::diplomacy` | `AllianceImpl`, `AllianceRequestImpl`, alliance / donate / embargo / target / emoji executions (D40) | alliances, traitors, relations, embargoes, donations | no |
+| `engine::nations` | `NationExecution`, `nation/*Behavior` (reduced, D40) | AI nations | no |
 | `engine::runner` | `GameRunner.ts`, `ExecutionManager.ts` | match setup, `Intent` → execution | no |
 | `engine::util` | `Util.simpleHash`, `getSpawnTiles` | helpers | no |
 | `client` | — | `GameState` resource, fixed-tick runner, pending intents, changed tiles, settings, notices | yes |

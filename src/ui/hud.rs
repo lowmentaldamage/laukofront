@@ -394,8 +394,9 @@ fn spawn_hud(mut commands: Commands) {
             for line in [
                 "Left click      spawn / attack / boat across water",
                 "Click own bldg  upgrade it",
-                "Q E F G         build city / port / factory / defense",
-                "Right click     cancel building",
+                "Q E F G V B     city/port/factory/defense/silo/SAM",
+                "N  Z X C        warship  atom/hydrogen/MIRV",
+                "Right click     player: diplomacy; building: cancel",
                 "1 - 9           attack size 10% - 90%",
                 "R               retreat newest attack",
                 "Space           pause",
@@ -405,7 +406,7 @@ fn spawn_hud(mut commands: Commands) {
                 "Mouse wheel     zoom",
                 "Minimap click   jump there",
                 "H               show / hide this help",
-                "Esc             skip the tutorial",
+                "Esc             cancel / close menu / skip tutorial",
             ] {
                 c.spawn((Text::new(line), font(13.0), TextColor(TEXT)));
             }
@@ -562,7 +563,16 @@ fn update_texts(
                         r.land_share * 100.0,
                         fmt_num(r.troops)
                     ),
-                    Some(if r.is_me { ACCENT } else { TEXT }),
+                    // Allies green, traitors red.
+                    Some(if r.is_me {
+                        ACCENT
+                    } else if g.is_allied(HUMAN, r.id) {
+                        GOOD
+                    } else if g.is_traitor(r.id) {
+                        DANGER
+                    } else {
+                        TEXT
+                    }),
                 ),
                 None => (String::new(), None),
             },

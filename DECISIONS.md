@@ -291,3 +291,19 @@ One entry per decision: date, choice, reason, rejected options.
   upstream) are not ported; nukes leave fallout as upstream's default.
 - **Reason:** the effects on the game (what gets destroyed, how many troops die, what can be
   stopped) match upstream; the omitted parts are timing and presentation detail.
+
+## D40. Simplified diplomacy and nation AI
+- **Date:** 2026-11-20
+- **Choice:** alliances, requests, renewal, traitors, relations, embargoes, donations, targets
+  and their timings and numbers follow upstream (`AllianceImpl`, `PlayerImpl`, `GameImpl`,
+  `execution/alliance/*`, `Donate*`, `Embargo*`, `TargetPlayerExecution`). The nation AI keeps
+  upstream's structure and difficulty numbers (attack rate, reserve and trigger ratios, the
+  strategy order per difficulty, alliance decisions, structure ratios per city) but reduces the
+  long tails: no beachhead follow-ups, nuke planning around SAM coverage, warship hunting, AFK or
+  crown logic, or chatter. Reactions are a small set of our own words instead of upstream's emoji
+  table (the font has no emoji). Nation names come from our own syllable generator. No teams
+  until P12, so "friendly" means allied. Also fixed: "borders unowned land" counted water, so
+  coastal AIs kept sending empty land attacks instead of boats.
+- **Reason:** the parts that shape a match (who allies, who betrays, who gets attacked, how hard
+  nations are) match upstream; the omitted parts are refinements that need the real maps (P11)
+  to tune.

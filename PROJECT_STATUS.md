@@ -1,9 +1,7 @@
 # Project status
 
 **Date:** 2026-11-20
-**State:** playable against bots with boats, buildings, trade, warships and nukes (port milestones P0–P9). Next: diplomacy and AI nations (P10), maps (P11), menus (P12), save/audio (P13), release (P14).
-The game is **not playable yet**: there is no window, map rendering or input. The simulation
-rules work and are tested headless.
+**State:** playable against bots and AI nations with diplomacy, boats, buildings, trade, warships and nukes (port milestones P0–P10). Next: maps (P11), menus (P12), save/audio (P13), release (P14).
 
 ## Done
 
@@ -20,10 +18,9 @@ rules work and are tested headless.
 
 ## Not done
 
-- Stages 8–20: rendering, interaction, HUD, real AI, menus, save/load, audio, performance pass,
-  QA, packaging, final docs, release tag.
-- `ai.toml` is loaded and validated, but no AI uses it yet (Stage 11).
-- `render`, `input`, `ui`, `menu` modules are empty placeholders.
+- P11 maps (better generator, real-Earth maps), P12 menus and game modes (teams), P13 save/load,
+  audio and polish, P14 performance pass and release.
+- Later plan: online multiplayer, accounts, ranked play, clans.
 
 ## Known issues
 

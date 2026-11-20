@@ -15,7 +15,7 @@ use bevy::prelude::*;
 use bevy::window::{PresentMode, WindowResolution};
 
 use laukofront::client::{ClientPlugin, ClientSettings, CurrentSetup, GameState, PendingIntents};
-use laukofront::config::{GameConfig, MapSize, GAME_CONFIG_PATH};
+use laukofront::config::{Difficulty, GameConfig, MapSize, GAME_CONFIG_PATH};
 use laukofront::engine::units::UnitKind;
 use laukofront::engine::util::spawn_tiles;
 use laukofront::engine::{new_match, Intent, MatchSetup, HUMAN};
@@ -39,16 +39,13 @@ fn parse_args() -> Result<Options, String> {
         .map(|d| (d.as_nanos() % 1_000_000_007) as i64)
         .unwrap_or(1);
     let mut o = Options {
-        setup: MatchSetup {
-            size: MapSize::Medium,
-            seed,
-            bots: 20,
-        },
+        setup: MatchSetup::bots_only(MapSize::Medium, seed, 20),
         autoplay: false,
         perf_run: None,
         screenshot: None,
         screenshot_at: 6.0,
     };
+    let mut nations: Option<u32> = None;
     let mut it = std::env::args().skip(1);
     while let Some(a) = it.next() {
         if a == "--autoplay" {
@@ -67,6 +64,12 @@ fn parse_args() -> Result<Options, String> {
             }
             "--bots" => o.setup.bots = v.parse().map_err(|e| format!("--bots: {e}"))?,
             "--seed" => o.setup.seed = v.parse().map_err(|e| format!("--seed: {e}"))?,
+            "--nations" => nations = Some(v.parse().map_err(|e| format!("--nations: {e}"))?),
+            "--difficulty" => {
+                o.setup.difficulty = Difficulty::parse(&v).ok_or(format!(
+                    "unknown difficulty {v} (easy|medium|hard|impossible)"
+                ))?
+            }
             "--perf-run" => o.perf_run = Some(v.parse().map_err(|e| format!("--perf-run: {e}"))?),
             "--screenshot" => o.screenshot = Some(v),
             "--screenshot-at" => {
@@ -75,6 +78,7 @@ fn parse_args() -> Result<Options, String> {
             other => return Err(format!("unknown argument {other}")),
         }
     }
+    o.setup.nations = nations.unwrap_or(MatchSetup::default_nations(o.setup.size));
     Ok(o)
 }
 
@@ -87,7 +91,12 @@ struct Autoplay {
     spawn_sent: bool,
 }
 
-fn autoplay(game: Res<GameState>, mut auto: ResMut<Autoplay>, mut pending: ResMut<PendingIntents>) {
+fn autoplay(
+    game: Res<GameState>,
+    mut auto: ResMut<Autoplay>,
+    mut pending: ResMut<PendingIntents>,
+    mut settings: ResMut<ClientSettings>,
+) {
     let g = &game.0;
     if g.ticks() == auto.last_tick {
         return;
@@ -133,6 +142,36 @@ fn autoplay(game: Res<GameState>, mut auto: ResMut<Autoplay>, mut pending: ResMu
                 target,
                 troops: Some(troops),
             });
+        }
+    }
+    // After a minute, keep the diplomacy menu open on the biggest other player (for screenshots).
+    if g.ticks() >= 600 && settings.player_menu.is_none() {
+        settings.player_menu = g
+            .alive_players()
+            .filter(|p| p.id() != HUMAN)
+            .max_by_key(|p| p.num_tiles())
+            .map(|p| p.id());
+        settings.menu_pos = Vec2::new(560.0, 240.0);
+    }
+    // Diplomacy: accept alliance requests, and every 20 s ask a nation next to us.
+    let asks: Vec<_> = g.incoming_requests(HUMAN).map(|r| r.requestor).collect();
+    for from in asks {
+        pending.0.push(Intent::AllianceReply {
+            player: HUMAN,
+            from,
+            accept: true,
+        });
+    }
+    if g.ticks().is_multiple_of(200) {
+        let nation = g.nearby(HUMAN).into_iter().flatten().find(|&p| {
+            g.player(p)
+                .is_some_and(|x| x.kind() == laukofront::engine::PlayerType::Nation)
+                && g.can_send_alliance_request(HUMAN, p)
+        });
+        if let Some(to) = nation {
+            pending
+                .0
+                .push(Intent::AllianceRequest { player: HUMAN, to });
         }
     }
     // Every 5 s: build something affordable on a random own tile, or send a boat if land

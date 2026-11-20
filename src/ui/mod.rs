@@ -9,6 +9,7 @@
 //! - `endscreen`: victory / defeat panel with restart
 
 pub mod buildbar;
+pub mod diplomacy;
 pub mod endscreen;
 pub mod hud;
 pub mod labels;
@@ -33,6 +34,7 @@ impl Plugin for UiPlugin {
             endscreen::EndScreenPlugin,
             buildbar::BuildBarPlugin,
             preview::PreviewPlugin,
+            diplomacy::DiplomacyUiPlugin,
         ));
     }
 }
@@ -225,15 +227,7 @@ mod tests {
 
     fn played(ticks: u32) -> Game {
         let cfg = GameConfig::load(GAME_CONFIG_PATH).unwrap();
-        let mut g = new_match(
-            cfg,
-            MatchSetup {
-                size: MapSize::Small,
-                seed: 2,
-                bots: 6,
-            },
-        )
-        .unwrap();
+        let mut g = new_match(cfg, MatchSetup::bots_only(MapSize::Small, 2, 6)).unwrap();
         run_turn(&mut g, &[]);
         let map = g.map();
         let t = (0..map.num_tiles())

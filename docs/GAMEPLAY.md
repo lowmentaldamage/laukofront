@@ -171,7 +171,49 @@ Port of upstream tribe AI (`TribeExecution`, `TribeAttackBehavior`, land parts o
   ships within 5 tiles are captured. Click your warship, then water, to move it.
 - You get a warning when a nuke is launched at you, and a notice when a SAM shoots one down.
 
+## Implemented (P10): diplomacy and AI nations
+
+**Alliances** (right click a player's land for the diplomacy menu):
+
+- Ask for an alliance; the other side has 20 s to accept (or asks back, which accepts). After a
+  refusal you can ask again 30 s after your first request.
+- Allies cannot attack each other; attacks on a new ally pull back, boats landing on an ally's
+  coast bring the troops home, SAMs and warships leave allies alone, and missiles in flight
+  between new allies are called off.
+- Alliances last **5 minutes**. In the last 30 s a **renew** button shows (top-right panel); the
+  alliance renews when both sides agree, otherwise it ends quietly.
+- **Breaking** an alliance makes you a **traitor for 30 s**: you defend at half strength and
+  attackers move faster through your land; your neighbours trust you less. Launching an atom or
+  hydrogen bomb that hits 100+ tiles of an ally breaks the alliance too; a MIRV at an ally always
+  does.
+
+**Other actions** in the menu: **embargo** (no trade ships between you), **send troops / gold**
+(a third of yours, allies only, every 10 s; troops never push them past their cap), **mark as
+target** (your allies see it; once per 15 s, lasts 10 s) and **reactions** (short words shown on
+your land for 5 s).
+
+**Relations:** every player has a feeling toward every other one (hostile, distrustful,
+neutral, friendly). Attacks, betrayals and nukes make it worse; alliances and gifts make it
+better; it fades back toward neutral over time. Nations decide with it.
+
+**AI nations** (`--nations N`, default 3 / 6 / 10 by map size) with a **difficulty**
+(`--difficulty easy|medium|hard|impossible`, default medium):
+
+| | Easy | Medium | Hard | Impossible |
+|---|---|---|---|---|
+| Start troops | 12.5K | 18.75K | 25K | 31.25K |
+| Troop cap | x0.5 | x0.75 | x1 | x1.25 |
+| Troop growth | x0.9 | x0.95 | x1 | x1.05 |
+| Acts every | 6.5-10 s | 5.5-7 s | 4.5-6 s | 3-5 s |
+
+Nations expand, answer attacks, pick targets in upstream's order for their difficulty (bots,
+allies' targets, betraying weak allies, traitors, hated players, very weak or embattled enemies,
+the weakest neighbour), sail to other islands, ask for and answer alliances (traitors are nearly
+always refused, much stronger players are courted), build cities, ports, factories, silos, SAMs
+and defense posts, launch warships, embargo players they hate, help allies under attack, and from
+medium up nuke players they hate (MIRVs at a player holding over 40% of the land on hard and
+impossible). Bots attack a neighbouring traitor first.
+
 ## Coming next
 
-- **P10:** alliances, embargoes, donations, and AI nations (with difficulty) that also build,
-  sail and nuke.
+- **P11:** better generated maps and real-Earth maps.

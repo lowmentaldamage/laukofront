@@ -172,6 +172,9 @@ pub fn click_action_with(
         };
     }
     if let Some(t) = target {
+        if game.is_friendly(HUMAN, t) {
+            return ClickAction::Refuse("That is your ally (right click for diplomacy)");
+        }
         if !game.can_attack_player(HUMAN, t) {
             return ClickAction::Refuse("Spawn immunity is still active");
         }
@@ -233,15 +236,42 @@ fn click_map(
     mut notices: ResMut<Notices>,
     mut actions: ResMut<PlayerActions>,
     mut settings: ResMut<ClientSettings>,
+    window: Single<&Window, With<PrimaryWindow>>,
+    mut right_press: Local<Option<Vec2>>,
 ) {
-    if buttons.just_pressed(MouseButton::Right) && settings.build.is_some() {
-        settings.build = None;
+    if buttons.just_pressed(MouseButton::Right) {
+        if settings.build.is_some() {
+            settings.build = None;
+            *right_press = None;
+            return;
+        }
+        *right_press = window.cursor_position();
+    }
+    if buttons.just_released(MouseButton::Right) {
+        // A right click (not a camera drag) on a player's land opens the diplomacy menu.
+        let pos = window.cursor_position();
+        let clicked = matches!((*right_press, pos), (Some(a), Some(b)) if a.distance(b) < 6.0);
+        *right_press = None;
+        if clicked {
+            let owner = hovered.0.and_then(|t| game.0.owner(t));
+            match owner {
+                Some(o) if o != HUMAN => {
+                    settings.player_menu = Some(o);
+                    settings.menu_pos = pos.unwrap_or_default();
+                }
+                _ => settings.player_menu = None,
+            }
+        }
         return;
     }
     if !buttons.just_pressed(MouseButton::Left) {
         return;
     }
     let Some(tile) = hovered.0 else { return };
+    if settings.player_menu.take().is_some() {
+        // A click on the map closes the menu and does nothing else.
+        return;
+    }
     match click_action_with(
         &game.0,
         tile,
@@ -378,6 +408,7 @@ fn keyboard(
     if keys.just_pressed(KeyCode::Escape) {
         settings.build = None;
         settings.selected_ship = None;
+        settings.player_menu = None;
     }
     for (k, speed) in [(KeyCode::F1, 1), (KeyCode::F2, 2), (KeyCode::F3, 3)] {
         if keys.just_pressed(k) {
@@ -427,15 +458,7 @@ mod tests {
 
     fn game() -> Game {
         let cfg = GameConfig::load(GAME_CONFIG_PATH).unwrap();
-        new_match(
-            cfg,
-            MatchSetup {
-                size: MapSize::Small,
-                seed: 3,
-                bots: 4,
-            },
-        )
-        .unwrap()
+        new_match(cfg, MatchSetup::bots_only(MapSize::Small, 3, 4)).unwrap()
     }
 
     /// Spawned human with lots of gold, after spawn immunity.

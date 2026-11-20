@@ -1,5 +1,7 @@
 //! Player state. Port of the data half of upstream `packages/engine/src/game/PlayerImpl.ts`.
 
+use std::collections::BTreeMap;
+
 use crate::engine_lib::game_map::TileRef;
 
 use super::attack::AttackId;
@@ -60,6 +62,42 @@ pub struct Player {
     pub(crate) city_levels: u32,
     /// Units of each buildable kind ever finished (upstream `unitsConstructed`, for costs).
     pub(crate) constructed: [u32; 6],
+    /// Upstream relations: -100 (hostile) .. 100 (friendly), decaying toward 0.
+    pub(crate) relations: BTreeMap<PlayerId, f64>,
+    /// Tick this player last broke an alliance (traitor for `traitor_duration_ticks`).
+    pub(crate) traitor_tick: Option<u64>,
+    pub(crate) betrayals: u32,
+    /// Embargoes this player set: target -> (tick, temporary).
+    pub(crate) embargoes: BTreeMap<PlayerId, (u64, bool)>,
+    /// Donations sent: (recipient, tick).
+    pub(crate) donations: Vec<(PlayerId, u64)>,
+    /// Targets marked: (tick, target).
+    pub(crate) targets: Vec<(u64, PlayerId)>,
+    /// Alliance requests sent (accepted or rejected): (recipient, tick), for the cooldown.
+    pub(crate) past_requests: Vec<(PlayerId, u64)>,
+}
+
+/// Upstream `Relation`, from the relation value.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+pub enum Relation {
+    Hostile,
+    Distrustful,
+    Neutral,
+    Friendly,
+}
+
+impl Relation {
+    pub fn from_value(v: f64) -> Self {
+        if v < -50.0 {
+            Relation::Hostile
+        } else if v < 0.0 {
+            Relation::Distrustful
+        } else if v < 50.0 {
+            Relation::Neutral
+        } else {
+            Relation::Friendly
+        }
+    }
 }
 
 impl Player {
@@ -79,6 +117,13 @@ impl Player {
             units: Vec::new(),
             city_levels: 0,
             constructed: [0; 6],
+            relations: BTreeMap::new(),
+            traitor_tick: None,
+            betrayals: 0,
+            embargoes: BTreeMap::new(),
+            donations: Vec::new(),
+            targets: Vec::new(),
+            past_requests: Vec::new(),
         }
     }
 
@@ -153,6 +198,53 @@ impl Player {
     /// Sum of levels of finished cities.
     pub fn city_levels(&self) -> u32 {
         self.city_levels
+    }
+
+    /// Upstream `relation(other)`.
+    pub fn relation(&self, other: PlayerId) -> Relation {
+        Relation::from_value(self.relation_value(other))
+    }
+
+    pub fn relation_value(&self, other: PlayerId) -> f64 {
+        self.relations.get(&other).copied().unwrap_or(0.0)
+    }
+
+    /// Upstream `updateRelation`: add `delta`, clamped to -100..=100.
+    pub fn update_relation(&mut self, other: PlayerId, delta: f64) {
+        if other == self.small_id {
+            return;
+        }
+        let r = (self.relation_value(other) + delta).clamp(-100.0, 100.0);
+        self.relations.insert(other, r);
+    }
+
+    /// Upstream `decayRelations`: every value moves 0.05 toward 0 per tick.
+    pub fn decay_relations(&mut self) {
+        for r in self.relations.values_mut() {
+            let delta = 0.05;
+            *r -= r.signum() * delta;
+            if r.abs() < delta * 2.0 {
+                *r = 0.0;
+            }
+        }
+    }
+
+    pub fn betrayals(&self) -> u32 {
+        self.betrayals
+    }
+
+    /// Upstream `hasEmbargoAgainst`.
+    pub fn has_embargo_against(&self, other: PlayerId) -> bool {
+        self.embargoes.contains_key(&other)
+    }
+
+    /// An embargo the player set themself (not a temporary one).
+    pub fn has_manual_embargo_against(&self, other: PlayerId) -> bool {
+        self.embargoes.get(&other).is_some_and(|e| !e.1)
+    }
+
+    pub fn embargoes(&self) -> impl Iterator<Item = PlayerId> + '_ {
+        self.embargoes.keys().copied()
     }
 
     pub fn attacks_sent(&self) -> u32 {

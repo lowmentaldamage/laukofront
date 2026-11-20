@@ -15,6 +15,7 @@ See `PROJECT_STATUS.md`. See `PROJECT_STATUS.md`.
 ```powershell
 cargo run --release                       # play: Medium map, 20 bots
 cargo run --release -- --size large --bots 50 --seed 7
+cargo run --release -- --nations 8 --difficulty hard
 cargo run --release -- --autoplay         # watch it play itself
 cargo test
 ```

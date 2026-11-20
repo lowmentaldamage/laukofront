@@ -137,3 +137,16 @@ warship_shot_range = 40         # ours: shells are instant within this range
 warship_shot_interval = 20      # upstream warshipShellAttackRate
 warship_capture_range = 5       # trade ships this close are captured
 shell_damage = 250
+
+[diplomacy]                     # upstream: Config / EngineConfig alliance, traitor, donation, target values
+alliance_duration_ticks = 3000  # 5 minutes
+alliance_request_duration_ticks = 200
+alliance_request_cooldown_ticks = 300
+alliance_extension_prompt_ticks = 300   # renew button shows 30 s before the alliance ends
+traitor_duration_ticks = 300    # traitors defend at half strength for 30 s
+donate_cooldown_ticks = 100
+target_duration_ticks = 100
+target_cooldown_ticks = 150
+temporary_embargo_ticks = 3000
+nuke_alliance_break_threshold = 100     # tiles of an ally in the blast that break the alliance
+reaction_duration_ticks = 50    # ours: how long a reaction shows above the sender's land

@@ -25,7 +25,7 @@ Milestones in order. Stage numbers refer to the build guide.
 | P7 Boats | **done** — transport ships, water routing, boat retreat, bots use boats |
 | P8 Buildings | **done** — city, port, factory, defense post, upgrades, trade ships, factory income, build bar |
 | P9 Warships and nukes | **done** — silo, SAM, warships, atom/hydrogen bomb, MIRV, fallout |
-| P10 Diplomacy and nations | alliances, embargo, donations, nation AI with difficulty |
+| P10 Diplomacy and nations | **done** — alliances, traitors, embargo, donations, targets, reactions, nation AI with 4 difficulties |
 | P11 Maps | richer generator (biomes, rivers, styles) and real-Earth maps from Natural Earth |
 | P12 Menus and modes | main menu, match setup, teams, Doomsday Clock, settings |
 | P13 Save, audio, polish | snapshots, sound, end-of-match statistics |

@@ -8,15 +8,7 @@ fn config() -> GameConfig {
 }
 
 fn bots_only(seed: i64, bots: u32) -> Game {
-    new_match(
-        config(),
-        MatchSetup {
-            size: MapSize::Small,
-            seed,
-            bots,
-        },
-    )
-    .unwrap()
+    new_match(config(), MatchSetup::bots_only(MapSize::Small, seed, bots)).unwrap()
 }
 
 /// Upstream guide requirement: a match between AIs reaches a winner. Seed 3 is a map where the

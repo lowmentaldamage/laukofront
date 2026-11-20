@@ -63,6 +63,7 @@ pub struct Game {
     /// Flood-fill scratch: tile -> generation it was visited in.
     visit_gen: Vec<u32>,
     gen: u32,
+    pub(crate) diplo: super::diplomacy::DiplomacyState,
 }
 
 impl Game {
@@ -92,6 +93,7 @@ impl Game {
             water,
             visit_gen: vec![0; n],
             gen: 0,
+            diplo: Default::default(),
         }
     }
 
@@ -176,10 +178,10 @@ impl Game {
         }
     }
 
-    /// Upstream `canAttackPlayer` (no alliances or teams yet, so nobody is friendly):
-    /// only human attackers respect spawn immunity.
+    /// Upstream `canAttackPlayer`: never yourself or an ally; only human attackers respect
+    /// spawn immunity.
     pub fn can_attack_player(&self, attacker: PlayerId, target: PlayerId) -> bool {
-        if attacker == target {
+        if attacker == target || self.is_friendly(attacker, target) {
             return false;
         }
         match self.player(attacker).map(|p| p.kind()) {
@@ -189,7 +191,7 @@ impl Game {
         }
     }
 
-    /// Upstream `sharesBorderWith`. `other = None` means unowned land.
+    /// Upstream `sharesBorderWith`. `other = None` means unowned land (water does not count).
     pub fn shares_border_with(&self, p: PlayerId, other: Option<PlayerId>) -> bool {
         let other_id = other.unwrap_or(0);
         let Some(pl) = self.player(p) else {
@@ -198,7 +200,9 @@ impl Game {
         let mut buf = [0; 4];
         pl.border.iter().any(|&t| {
             let n = self.map.neighbors4(t, &mut buf);
-            buf[..n].iter().any(|&nb| self.map.owner_id(nb) == other_id)
+            buf[..n]
+                .iter()
+                .any(|&nb| self.map.owner_id(nb) == other_id && self.map.is_land(nb))
         })
     }
 
@@ -778,6 +782,7 @@ impl Game {
         self.detonations.clear();
         self.sam_shots.clear();
         self.shell_shots.clear();
+        self.diplo.events.clear();
         let ticks = self.ticks;
 
         let mut execs = std::mem::take(&mut self.execs);

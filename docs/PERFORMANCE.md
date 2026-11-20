@@ -189,3 +189,15 @@ atom bomb every 300 ticks):
 | large | 50 | 2.11 ms | 474 | 4.88 ms | 6.52 ms | 0 |
 
 No slow frames at all, including at match start (the P8 start-up spikes are gone).
+
+### 2026-11-20 — P10: nations
+
+Frame time (`--autoplay --perf-run 60`, 1440x900):
+
+| Map | Bots | Nations | Avg | FPS | p99 | Max | Frames > 33 ms |
+|---|---|---|---|---|---|---|---|
+| medium | 20 | 6 | 1.72 ms | 583 | 3.34 ms | 6.75 ms | 0 |
+| large | 50 | 10 | 2.29 ms | 437 | 5.53 ms | 11.56 ms | 0 |
+
+Engine only (`bot_match`, 30 bots + 10 hard nations): medium 6 771 ticks in 1.2 s (0.18 ms per
+tick), large 10 041 ticks in 3.5 s (0.35 ms per tick).
