@@ -134,3 +134,18 @@ One entry per decision: date, choice, reason, rejected options.
 - **Reason:** upstream maps and art are separate assets (CC BY-SA, some all-rights-reserved), and
   laukofront should be its own game built on the engine rather than a copy of OpenFront's
   presentation.
+
+## D21. Reference values for the ported RNG and DetMath
+- **Date:** 2026-11-20
+- **Choice:** the Rust tests compare against bit patterns produced by a hand transcription of
+  upstream `PseudoRandom.ts` and `DetMath.ts` run in Node.js (not by executing the downloaded
+  upstream files).
+- **Reason:** proves the Rust port reproduces upstream's JavaScript integer and float semantics
+  (`Math.imul`, `>>>`, `| 0`, IEEE doubles) bit for bit, so ported rules stay deterministic.
+
+## D22. Terrain generator shape
+- **Date:** 2026-11-20
+- **Choice:** fractal value noise minus a rounded edge falloff, 50% land, magnitude curve
+  `pow(h, 1.6)`. See `docs/MAP_GENERATION.md`.
+- **Reason:** a first try with a square edge fade produced rectangular continents; the blended
+  round/square falloff gives coastlines with bays and peninsulas.

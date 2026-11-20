@@ -9,6 +9,7 @@ pub mod combat;
 pub mod config;
 pub mod core;
 pub mod economy;
+pub mod engine_lib;
 pub mod input;
 pub mod map;
 pub mod menu;

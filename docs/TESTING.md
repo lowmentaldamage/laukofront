@@ -56,3 +56,12 @@ Results are added below as each stage runs them.
 - `cargo fmt --check`: clean.
 - No `unwrap()`/`expect()` in `src/` outside `#[cfg(test)]`; no Bevy imports in the simulation
   modules (checked with grep).
+
+### 2026-11-20 — Port milestone P1 (engine_lib)
+
+- `engine_lib::random`: sfc32 stream matches upstream bit for bit for 6 seeds (incl. negative and
+  > 32-bit seeds); state round-trip; shuffle is a permutation.
+- `engine_lib::detmath`: `exp`, `log`, `pow`, `atan2` match upstream bit patterns; within 1e-8 of std.
+- `engine_lib::game_map`: neighbour order N,S,W,E; terrain types; owner ids; border; edges.
+- `engine_lib::terrain`: determinism, land share, ocean edge, shoreline consistency, terrain mix.
+- Reference values: hand transcription of upstream PseudoRandom/DetMath run in Node 26 (D21).
