@@ -40,3 +40,57 @@ One entry per decision: date, choice, reason, rejected options.
 - **Date:** 2026-11-20
 - **Choice:** `main.rs` runs `App::new().run()`, which runs once and exits without opening a window.
 - **Reason:** the guide's Stage 3 asks for an app that compiles and "opens nothing yet". The window arrives in Stage 8.
+
+## D8. License: MIT
+- **Date:** 2026-11-20
+- **Choice:** MIT (`LICENSE.md`).
+- **Reason:** short, permissive and widely understood; fits a school project; matches the MIT
+  option of Bevy, serde and toml, so there is no license conflict.
+- **Rejected:** Apache-2.0 alone (longer, patent clauses not needed); GPL (would force the same
+  license on anyone reusing the code); no license (others could not legally reuse it).
+
+## D9. Gold has a use: Reinforce
+- **Date:** 2026-11-20
+- **Choice:** added a Reinforce order: 200 gold → +25 troops on an own territory, up to its cap.
+- **Reason:** the guide shows gold and income in the HUD but gives gold nothing to buy. Without a
+  use, gold is a meaningless number.
+- **Rejected:** buildings (too much scope before Stage 11); gold as score only.
+
+## D10. Time-limit victory at 60 minutes
+- **Date:** 2026-11-20
+- **Choice:** `sim.max_match_ticks = 36000`; winner = most territories, then most troops, then
+  lowest player id.
+- **Reason:** guarantees every match (and the Stage 11 "finishes within N ticks" test) ends.
+
+## D11. Easy AI handicap is slower thinking, not slower growth
+- **Date:** 2026-11-20
+- **Choice:** Easy thinks every 2 s and needs a 2.0× advantage; growth is the same for everyone.
+- **Reason:** the guide suggests "slower growth" for Easy, but also says AI uses only the actions
+  a human can use. Giving AIs different growth rules would make the sim treat players
+  differently. Handicaps live in the AI's decisions instead.
+
+## D12. Combat is a pure function on one territory
+- **Date:** 2026-11-20
+- **Choice:** `combat::resolve(attacker, sent, &mut Territory) -> AttackOutcome`. `World` checks
+  the order and removes sent troops; `combat` only decides the fight.
+- **Reason:** keeps `combat` below `sim` in the dependency tree and trivially testable.
+
+## D13. Raster Voronoi map
+- **Date:** 2026-11-20
+- **Choice:** territories are regions of a cell raster (nearest seed point), adjacency = shared
+  cell edge. See `docs/MAP_GENERATION.md`.
+- **Reason:** adjacency is exact and symmetric by construction; the same raster gives O(1) mouse
+  picking and the mesh for Stage 8; integer maths keeps it deterministic.
+- **Rejected:** pure graph with no geometry (nothing to draw); continuous Voronoi with a geometry
+  crate (float edge cases, extra dependency, harder to keep deterministic).
+
+## D14. Stand-in AI for tests and the benchmark
+- **Date:** 2026-11-20
+- **Choice:** `ai::RandomAttacker`, a seeded random attacker that only uses `queue_order`.
+- **Reason:** Stage 7 measures 1/3/5 AIs before the real AI exists (Stage 11). It is labelled as
+  a stand-in everywhere; the Stage 11 AI replaces it in the benchmark.
+
+## D15. Benchmark without criterion
+- **Date:** 2026-11-20
+- **Choice:** `src/bin/sim_bench.rs` using `std::time::Instant`, printing Markdown tables.
+- **Reason:** no extra dependency; output pastes straight into `PERFORMANCE.md`.

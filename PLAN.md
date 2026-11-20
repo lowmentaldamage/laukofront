@@ -120,7 +120,7 @@ pub enum Order {
 pub enum AttackOutcome { Captured { remaining: u32 }, Tie, Repelled { defender_left: u32 } }
 
 pub enum Event {
-    Attack { player, from, to, sent, outcome },
+    Attack { player, from, to, defender: Owner, sent, outcome },
     Reinforced { player, territory, added },
     OrderDropped { order },
     Eliminated { player },
