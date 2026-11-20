@@ -1,8 +1,8 @@
 use std::collections::VecDeque;
 
-use openfront_clone::config::{MapSize, MapSizeConfig};
-use openfront_clone::core::TerritoryId;
-use openfront_clone::map::Map;
+use laukofront::config::{MapSize, MapSizeConfig};
+use laukofront::core::TerritoryId;
+use laukofront::map::Map;
 
 mod common;
 

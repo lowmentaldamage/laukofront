@@ -1,17 +1,20 @@
-# openfront_clone
+# laukofront
 
-An OpenFront-style real-time territorial conquest game written in Rust with Bevy: grow troops,
-earn gold, and attack neighbouring territories until you are the last player standing.
+A real-time territorial strategy game in Rust + Bevy: spawn on a generated map, push your borders
+tile by tile, balance troop growth against expansion, and own 80% of the land to win.
 
-**Status:** the simulation core and benchmark are done (build-guide Stages 0–7). The game is not
-playable yet. See `PROJECT_STATUS.md`.
+laukofront is a Rust port of the **OpenFront** engine (<https://github.com/openfrontio/openfrontio>).
+**© OpenFront and Contributors.** laukofront is not affiliated with or endorsed by OpenFront.
+See `NOTICE.md`.
+
+**Status:** porting in progress — milestone P0 (rename, relicense, plan) done; the engine port
+starts with P1. Not playable yet. See `PROJECT_STATUS.md`.
 
 ## Quick start (Windows, PowerShell)
 
 ```powershell
-cargo test                              # run the simulation tests
-cargo run --release --bin sim_bench     # headless benchmark
-cargo run                               # the game (currently an empty app that exits)
+cargo test
+cargo run --release --bin sim_bench
 ```
 
 Full setup from a clean PC: `docs/BUILDING.md`. Smart App Control must be off to build.
@@ -20,15 +23,11 @@ Full setup from a clean PC: `docs/BUILDING.md`. Smart App Control must be off to
 
 | | |
 |---|---|
-| `PLAN.md` | the full plan: rules, numbers, architecture, milestones |
-| `docs/GAMEPLAY.md` | every rule and number |
-| `docs/ARCHITECTURE.md` | modules and dependencies |
-| `docs/MAP_GENERATION.md` | how maps are made |
-| `docs/CONTROLS.md` | keys and mouse |
-| `docs/TESTING.md`, `docs/PERFORMANCE.md` | test and benchmark results |
+| `PLAN.md` | the port plan: rules, map, architecture, milestones |
+| `NOTICE.md` | origin, attribution, licence terms |
 | `DECISIONS.md` | why things are the way they are |
-| `docs/CREDITS.md` | crates and assets with licenses |
+| `docs/` | gameplay, architecture, testing, performance, building, release |
 
 ## License
 
-MIT — see `LICENSE.md`.
+GNU AGPL-3.0-only with OpenFront's additional terms — see `LICENSE` and `NOTICE.md`.

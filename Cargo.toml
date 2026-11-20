@@ -1,12 +1,12 @@
 [package]
-name = "openfront_clone"
+name = "laukofront"
 version = "0.1.0"
 edition = "2021"
 rust-version = "1.99"
-description = "An OpenFront-style territorial conquest game written in Rust with Bevy."
-license = "MIT"
+description = "laukofront: a Rust port of the OpenFront territorial strategy engine."
+license = "AGPL-3.0-only"
 publish = false
-default-run = "openfront_clone"
+default-run = "laukofront"
 
 [dependencies]
 bevy = "=0.20.1"

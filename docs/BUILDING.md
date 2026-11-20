@@ -32,8 +32,8 @@ before switching.
 ## 3. Get the code
 
 ```powershell
-git clone <repository-url> openfront_clone
-Set-Location openfront_clone
+git clone <repository-url> laukofront
+Set-Location laukofront
 ```
 
 ## 4. Build and test
@@ -59,7 +59,7 @@ Always run from the project root so `assets/` is found.
 cargo build --release
 ```
 
-Output: `target\release\openfront_clone.exe`. Packaging: `docs/RELEASE.md`.
+Output: `target\release\laukofront.exe`. Packaging: `docs/RELEASE.md`.
 
 ## Troubleshooting
 

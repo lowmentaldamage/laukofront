@@ -1,6 +1,6 @@
-use openfront_clone::core::{OrderError, Owner, TerritoryId};
-use openfront_clone::economy::growth_amount;
-use openfront_clone::sim::Order;
+use laukofront::core::{OrderError, Owner, TerritoryId};
+use laukofront::economy::growth_amount;
+use laukofront::sim::Order;
 
 mod common;
 use common::{P0, P1};

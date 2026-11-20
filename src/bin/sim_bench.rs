@@ -12,11 +12,11 @@
 use std::process::ExitCode;
 use std::time::{Duration, Instant};
 
-use openfront_clone::ai::RandomAttacker;
-use openfront_clone::config::{GameConfig, MapSize, GAME_CONFIG_PATH};
-use openfront_clone::core::PlayerId;
-use openfront_clone::map::Map;
-use openfront_clone::sim::World;
+use laukofront::ai::RandomAttacker;
+use laukofront::config::{GameConfig, MapSize, GAME_CONFIG_PATH};
+use laukofront::core::PlayerId;
+use laukofront::map::Map;
+use laukofront::sim::World;
 
 const AI_COUNTS: [usize; 4] = [0, 1, 3, 5];
 

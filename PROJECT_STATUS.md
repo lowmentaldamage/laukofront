@@ -1,7 +1,7 @@
 # Project status
 
 **Date:** 2026-11-20
-**State:** Stages 0–7 of the build guide are done. Stages 8–20 have not started.
+**State:** Stages 0–7 of the build guide were done on the original design; the project then switched to porting the OpenFront engine (D16). Port milestone P0 is done; P1–P5 are next.
 The game is **not playable yet**: there is no window, map rendering or input. The simulation
 rules work and are tested headless.
 

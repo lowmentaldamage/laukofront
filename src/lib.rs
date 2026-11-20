@@ -1,4 +1,4 @@
-//! openfront_clone: an OpenFront-style territorial conquest game.
+//! laukofront: an OpenFront-style territorial conquest game.
 //!
 //! Simulation modules (`core`, `config`, `map`, `territory`, `combat`, `economy`, `sim`)
 //! are plain Rust with no Bevy types. Presentation modules (`render`, `input`, `ui`, `menu`)

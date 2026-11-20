@@ -94,3 +94,43 @@ One entry per decision: date, choice, reason, rejected options.
 - **Date:** 2026-11-20
 - **Choice:** `src/bin/sim_bench.rs` using `std::time::Instant`, printing Markdown tables.
 - **Reason:** no extra dependency; output pastes straight into `PERFORMANCE.md`.
+
+## D16. Port the OpenFront engine instead of the original design
+- **Date:** 2026-11-20
+- **Choice:** laukofront ports the OpenFront engine (<https://github.com/openfrontio/openfrontio>)
+  to Rust. The territory-graph sim (Stages 4–7) is replaced; the unfinished Stage 8 territory
+  renderer was shelved in `git stash` ("Stage 8 territory renderer (superseded ...)").
+- **Reason:** the owner's request. OpenFront is open source, so its real rules can be ported.
+- **Kept:** repo, workflow, docs structure, config loading, benchmark harness, Bevy camera code.
+- **Order:** core loop first (P1–P5 in `PLAN.md`); boats, structures, alliances, nations, nukes later.
+
+## D17. Licence: AGPL-3.0-only (replaces D8, MIT)
+- **Date:** 2026-11-20
+- **Choice:** the whole project is AGPL-3.0-only with OpenFront's section 7 additional terms
+  (`LICENSE`, copied unchanged from upstream). `NOTICE.md` records origin and attribution.
+- **Reason:** a port of AGPL code is a derivative work and must use the same licence. The section 7
+  terms require keeping "© OpenFront and Contributors" visible and not using "OpenFront" as the
+  primary title.
+- **Consequence:** anyone receiving the game (or playing it over a network) is entitled to the
+  source. Releases must ship `LICENSE` and `NOTICE.md`.
+
+## D18. Name: laukofront
+- **Date:** 2026-11-20
+- **Choice:** crate, binary and window title `laukofront` (was `openfront_clone`), chosen by the owner.
+- **Reason:** the old name used "OpenFront" as the primary title, which the section 7 terms forbid.
+
+## D19. Upstream reference clone
+- **Date:** 2026-11-20
+- **Choice:** `reference/openfrontio/` is a sparse, shallow clone of the upstream engine packages
+  at commit `129d4b32a7dd49720ed8a70ebef7c70770948aaf`, git-ignored. Nothing in it is executed
+  (no `npm install`); it is read only.
+- **Reason:** porting needs the exact source; pinning one commit keeps the port consistent while
+  upstream changes daily.
+
+## D20. Own maps, art and UI; engine logic only
+- **Date:** 2026-11-20
+- **Choice:** only engine logic is ported. Maps come from laukofront's own terrain generator;
+  colours, UI and any art are our own. No files from upstream `resources/` or `proprietary/`.
+- **Reason:** upstream maps and art are separate assets (CC BY-SA, some all-rights-reserved), and
+  laukofront should be its own game built on the engine rather than a copy of OpenFront's
+  presentation.

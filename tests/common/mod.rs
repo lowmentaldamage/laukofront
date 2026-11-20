@@ -1,8 +1,8 @@
 #![allow(dead_code)]
 
-use openfront_clone::config::{GameConfig, MapSize, GAME_CONFIG_PATH};
-use openfront_clone::core::{Owner, PlayerId, TerritoryId};
-use openfront_clone::sim::World;
+use laukofront::config::{GameConfig, MapSize, GAME_CONFIG_PATH};
+use laukofront::core::{Owner, PlayerId, TerritoryId};
+use laukofront::sim::World;
 
 pub fn config() -> GameConfig {
     GameConfig::load(GAME_CONFIG_PATH).expect("load game.toml")

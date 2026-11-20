@@ -1,7 +1,7 @@
-use openfront_clone::combat::{resolve, AttackOutcome};
-use openfront_clone::core::{OrderError, Owner};
-use openfront_clone::sim::{Event, Order};
-use openfront_clone::territory::Territory;
+use laukofront::combat::{resolve, AttackOutcome};
+use laukofront::core::{OrderError, Owner};
+use laukofront::sim::{Event, Order};
+use laukofront::territory::Territory;
 
 mod common;
 use common::{P0, P1};

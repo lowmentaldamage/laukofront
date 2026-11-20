@@ -9,3 +9,8 @@ Versions follow the build guide milestones. `1.0.0` is the finished game.
 - Stage 5: design documents, decisions log, MIT license.
 - Stage 6: headless simulation core (map generation, territories, combat, economy, tick) with tests.
 - Stage 7: headless benchmark `sim_bench` and first performance results.
+
+## 0.2.0 — 2026-11-20 (unreleased)
+
+- Renamed to **laukofront**; relicensed to AGPL-3.0-only (OpenFront port, D16–D20).
+- New `PLAN.md` for the OpenFront engine port; `NOTICE.md` with attribution.

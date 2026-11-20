@@ -1,7 +1,7 @@
-use openfront_clone::ai::RandomAttacker;
-use openfront_clone::config::MapSize;
-use openfront_clone::core::{OrderError, Owner, PlayerId, TerritoryId};
-use openfront_clone::sim::{Event, Order, VictoryReason, World};
+use laukofront::ai::RandomAttacker;
+use laukofront::config::MapSize;
+use laukofront::core::{OrderError, Owner, PlayerId, TerritoryId};
+use laukofront::sim::{Event, Order, VictoryReason, World};
 
 mod common;
 use common::{P0, P1};
