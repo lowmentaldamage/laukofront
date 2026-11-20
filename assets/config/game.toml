@@ -1,1 +1,42 @@
-# Balance numbers. Filled in Stage 4.
+# All balance numbers for openfront_clone. See PLAN.md section 3 and docs/GAMEPLAY.md.
+# Every key is required: a missing or unknown key stops the game with a message naming it.
+
+[sim]
+tick_hz = 10                 # simulation ticks per second
+max_players = 6              # 1 human + up to 5 AI
+max_match_ticks = 36000      # 60 minutes at 10 Hz; time-limit victory
+
+[map]
+candidates_per_point = 10    # best-candidate sampling quality
+
+[map.small]
+width = 192
+height = 120
+territories = 80
+
+[map.medium]
+width = 256
+height = 160
+territories = 150
+
+[map.large]
+width = 352
+height = 220
+territories = 300
+
+[territory]
+start_troops = 50            # each player's starting territory
+neutral_troops_min = 5
+neutral_troops_max = 20
+base_cap = 100
+cap_per_owned_neighbor = 20
+gold_per_min = 60            # per owned territory
+
+[growth]
+interval_ticks = 10          # growth happens once per second
+percent = 5                  # +5% of current troops, rounded down
+min_amount = 1               # but at least +1
+
+[reinforce]
+cost_gold = 200
+troops = 25
