@@ -109,10 +109,10 @@ pub fn generate(p: &TerrainParams, seed: i64) -> Option<GameMap> {
         .collect();
 
     // The outermost ring is always water, so the ocean surrounds the map.
-    for i in 0..w * h {
+    for (i, l) in land.iter_mut().enumerate() {
         let (x, y) = (i % w, i / w);
         if x == 0 || y == 0 || x == w - 1 || y == h - 1 {
-            land[i] = false;
+            *l = false;
         }
     }
 
