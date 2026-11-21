@@ -10,6 +10,7 @@ laukofront ports the OpenFront engine (see `NOTICE.md`). Module names follow ups
 | `engine_lib::detmath` | `engine-lib/DetMath.ts` | deterministic `exp`/`log`/`pow`/`atan2` | no |
 | `engine_lib::game_map` | `engine-lib/game/GameMapImpl.ts` | tile grid: terrain byte + owner state per tile | no |
 | `engine_lib::terrain` | — (ours) | map generator: styles, rivers, peaks, biomes | no |
+| `render::icons` | — (ours) | generated icon textures for buildings and ships (D42) | no |
 | `engine_lib::earth` | — (ours) | real-Earth maps: mask format, built-in files, map building | no |
 | `config` | parts of `Config.ts` / `EngineConfig.ts` | `GameConfig` loaded from `assets/config/game.toml` | no |
 | `engine::player` | `game/PlayerImpl.ts` (data) | `Player`, `PlayerInfo`, `PlayerType` | no |

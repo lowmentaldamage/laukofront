@@ -4,6 +4,7 @@
 
 pub mod camera;
 pub mod effects;
+pub mod icons;
 pub mod palette;
 pub mod perf;
 pub mod units;

@@ -36,3 +36,5 @@ Versions follow the build guide milestones. `1.0.0` is the finished game.
 - P11: map styles (continents, archipelago, pangaea, lakes), rivers, impassable peaks, biome
   colours; real-Earth maps (World, Europe, Asia, Africa, Americas, British Isles) from Natural Earth;
   `--map`, `--list-maps`; faster ship routing; nations hunt warships and finish island maps.
+- Our own 2D icons for buildings and ships; smooth ship and missile movement between ticks;
+  smooth zoom; smaller player names.

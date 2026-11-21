@@ -39,6 +39,14 @@ impl UnitKind {
         )
     }
 
+    /// Ships and missiles (things that move every tick).
+    pub fn is_mobile(self) -> bool {
+        matches!(
+            self,
+            UnitKind::TransportShip | UnitKind::TradeShip | UnitKind::Warship
+        ) || self.is_nuke()
+    }
+
     /// Missiles in flight.
     pub fn is_nuke(self) -> bool {
         matches!(

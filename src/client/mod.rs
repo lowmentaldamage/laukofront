@@ -31,6 +31,13 @@ pub struct TileChanges(pub Vec<TileRef>);
 #[derive(Resource, Default)]
 pub struct CaptureEvents(pub Vec<(TileRef, PlayerId)>);
 
+/// Where each moving unit (ships, missiles) was before the latest tick, so the renderer can slide
+/// it smoothly between ticks instead of jumping 10 times a second.
+#[derive(Resource, Default)]
+pub struct UnitMotion {
+    pub prev: std::collections::HashMap<crate::engine::units::UnitId, TileRef>,
+}
+
 /// Short-lived weapon effects collected from ticks: explosions (tile, radius, age) and
 /// shots (from, to, is_sam, age). Ages in seconds; the renderer ages and removes them.
 #[derive(Resource, Default)]
@@ -147,6 +154,7 @@ impl Plugin for ClientPlugin {
             .init_resource::<TileChanges>()
             .init_resource::<CaptureEvents>()
             .init_resource::<WeaponFx>()
+            .init_resource::<UnitMotion>()
             .init_resource::<MapRebuild>()
             .init_resource::<ClientSettings>()
             .init_resource::<Notices>()
@@ -332,6 +340,7 @@ fn run_tick(
     mut notices: ResMut<Notices>,
     mut stats: ResMut<MatchStats>,
     mut fx: ResMut<WeaponFx>,
+    mut motion: ResMut<UnitMotion>,
 ) {
     if settings.paused {
         return;
@@ -339,6 +348,14 @@ fn run_tick(
     let intents = std::mem::take(&mut pending.0);
     let g = &mut game.0;
     let before = snapshot(g);
+    motion.prev.clear();
+    for u in g
+        .units()
+        .iter()
+        .filter(|u| u.is_active() && u.kind().is_mobile())
+    {
+        motion.prev.insert(u.id(), u.tile());
+    }
     let had_winner = g.winner().is_some();
     run_turn(g, &intents);
 

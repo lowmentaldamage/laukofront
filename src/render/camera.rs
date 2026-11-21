@@ -30,6 +30,18 @@ impl Default for CameraZoom {
     }
 }
 
+/// One frame of zoom smoothing: moves `cur` toward `target` by a share that depends on the frame
+/// time, so it feels the same at any frame rate; snaps when close.
+pub fn smooth_zoom(cur: f32, target: f32, dt: f32) -> f32 {
+    let k = 1.0 - (-dt * 18.0).exp();
+    let next = (cur.ln() + (target.ln() - cur.ln()) * k).exp();
+    if (next / target - 1.0).abs() < 0.002 {
+        target
+    } else {
+        next
+    }
+}
+
 /// World units per pixel at zoom 1.0 for a window of `win` pixels and a map of `map` units.
 pub fn fit_scale(map: Vec2, win: Vec2) -> f32 {
     if win.x <= 0.0 || win.y <= 0.0 {
@@ -71,6 +83,8 @@ pub fn camera_controls(
     motion: Res<AccumulatedMouseMotion>,
     scroll: Res<AccumulatedMouseScroll>,
     time: Res<Time<Real>>,
+    mut shown: Local<Option<f32>>,
+    mut anchor: Local<Option<Vec2>>,
 ) {
     let (mut transform, mut projection) = camera.into_inner();
     let Projection::Orthographic(ortho) = &mut *projection else {
@@ -88,12 +102,20 @@ pub fn camera_controls(
     };
     if lines != 0.0 {
         zoom.0 = (zoom.0 * ZOOM_STEP.powf(lines)).clamp(MIN_ZOOM, MAX_ZOOM);
+        *anchor = window.cursor_position();
     }
-    let new_scale = fit / zoom.0;
-    if lines != 0.0 {
-        if let Some(cursor) = window.cursor_position() {
+    // The shown zoom glides toward the wanted one (in log space, ~0.15 s), keeping the point
+    // under the cursor where it was.
+    let cur = shown.unwrap_or(zoom.0);
+    let next = smooth_zoom(cur, zoom.0, time.delta_secs());
+    *shown = Some(next);
+    let new_scale = fit / next;
+    if next != cur {
+        if let Some(cursor) = *anchor {
             center = zoom_about(center, cursor - win / 2.0, old_scale, new_scale);
         }
+    } else {
+        *anchor = None;
     }
 
     // Pan with keys.
@@ -126,6 +148,19 @@ pub fn camera_controls(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn zoom_glides_and_arrives() {
+        let mut z = 1.0;
+        for _ in 0..3 {
+            z = smooth_zoom(z, 4.0, 1.0 / 60.0);
+        }
+        assert!(z > 1.0 && z < 4.0, "partway after 3 frames: {z}");
+        for _ in 0..60 {
+            z = smooth_zoom(z, 4.0, 1.0 / 60.0);
+        }
+        assert_eq!(z, 4.0, "arrives within a second");
+    }
 
     #[test]
     fn fit_scale_fits_the_longer_axis() {

@@ -88,7 +88,8 @@ pub fn place_labels(game: &Game) -> Vec<LabelPlacement> {
             }
             tile = best.1;
         }
-        let size = ((n as f32).sqrt() * 0.13).clamp(2.0, 36.0);
+        // Smaller than before so names do not cover the map (P11 play-test feedback).
+        let size = ((n as f32).sqrt() * 0.075).clamp(1.6, 20.0);
         let name = if p.id() == HUMAN { "You" } else { p.name() };
         let mut text = format!("{name}\n{}", fmt_num(p.troops() as f64));
         let id = p.id();

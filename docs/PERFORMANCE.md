@@ -216,3 +216,13 @@ Ship routes (`water_route_timing`, 40 random coast pairs): worst 0.85 ms (genera
 (World, was 40 ms before the coarse graph), 1.15 ms (Americas), 1.25 ms (Europe). Map build:
 57-193 ms for the Earth maps, 33-43 ms for small generated maps. Engine (`bot_match`, 20 bots + 8
 nations): World 18 041 ticks in 3.0 s (0.17 ms per tick).
+
+### 2026-11-21 — Icon sprites
+
+| Map | Players | Avg | FPS | p99 | Max | Frames > 33 ms |
+|---|---|---|---|---|---|---|
+| large generated | 50 bots + 10 nations | 2.56 ms | 391 | 5.69 ms | 8.85 ms | 0 |
+| world | 50 + 16 | 2.46 ms | 407 | 4.95 ms | 10.27 ms | 0 |
+
+About 0.3 ms more per frame than line icons (sprites for every building and ship, updated each
+frame).

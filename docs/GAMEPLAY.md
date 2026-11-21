@@ -226,6 +226,18 @@ impossible). Bots attack a neighbouring traitor first.
 - Nations now hunt enemy warships with their own, and a nation holding over half the land nukes
   the biggest holdout, so island maps end.
 
+## Look and feel (after the P11 play-test)
+
+- Buildings and ships have **2D icons** (our own, drawn by code): a city skyline, an anchor
+  (port), a factory, a shield (defense post), a missile (silo), a radar dish (SAM), a warship, a
+  sailing boat (transport) and a cargo ship (trade). Buildings sit on a badge in a darker shade of
+  the owner's colour; ships are drawn in the owner's colour and face the way they sail. Icons keep
+  their size on screen at any zoom; unfinished buildings are faded with a progress ring, upgrades
+  show one dot per extra level.
+- Ships and missiles **slide smoothly** between game ticks instead of jumping 10 times a second.
+- **Zoom glides** to the new level (about 0.15 s) instead of snapping.
+- Player names on the map are smaller.
+
 ## Coming next
 
 - **P12:** main menu, match setup (map, players, difficulty, modes including teams), settings.

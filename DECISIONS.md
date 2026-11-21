@@ -324,3 +324,13 @@ One entry per decision: date, choice, reason, rejected options.
   land nukes the biggest holdout regardless of relations (ours, to end island stalemates).
 - **Reason:** real places and varied shapes without shipping OpenFront's map files (D20); the
   router and AI changes keep big and island maps fast and finishable.
+
+## D42. Our own unit icons and smooth motion
+- **Date:** 2026-11-21
+- **Choice:** unit icons are generated at startup from simple shapes (`render/icons.rs`,
+  supersampled, white with a dark outline) and shown as sprites; buildings get a badge tinted a
+  darker shade of the owner's colour. Moving units are drawn between their tile before and after
+  the last tick using the fixed-step overstep fraction (the display lags the game by at most one
+  tick, 0.1 s). Zoom eases in log space.
+- **Reason:** play-test feedback (line icons looked unfinished, ships stuttered at 10 Hz); generated
+  art keeps D20 (no OpenFront assets) and needs no downloads.

@@ -241,3 +241,10 @@ winner; archipelago seeds 1-6: 5 of 6. Earth maps (20 bots + 8 nations): all six
 
 Manual check: World and Europe with autoplay. Coastlines, biomes, labels, alliance panel and
 minimap show correctly; fixed the diplomacy menu drawing over the end screen.
+
+### 2026-11-21 — Icons, smooth motion, smaller names
+
+**147 passed, 0 failed** (77 unit). New: every icon has a shape and an outline and fits inside its
+texture, icons all differ, every building and ship kind has one; zoom easing moves partway each
+frame and arrives within a second. Screenshots (medium generated map, Europe) show ports, defense
+posts, cities and ships with their icons, readable badges and smaller names.
