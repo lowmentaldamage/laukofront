@@ -498,7 +498,42 @@ pub struct WarshipExecution {
     target: Option<UnitId>,
     last_shot: u64,
     random: PseudoRandom,
+    /// No new patrol route before this tick (after a failed route search).
+    retry_at: u64,
     active: bool,
+}
+
+/// A straight route over water from `from` to `to` (steps along the longer axis), if every tile
+/// on it is water. Open-sea patrol moves need no search.
+fn straight_water_route(
+    map: &crate::engine_lib::game_map::GameMap,
+    from: TileRef,
+    to: TileRef,
+) -> Option<Vec<TileRef>> {
+    let (x0, y0) = (map.x(from) as i64, map.y(from) as i64);
+    let (x1, y1) = (map.x(to) as i64, map.y(to) as i64);
+    let n = (x1 - x0).abs().max((y1 - y0).abs());
+    let mut out = Vec::with_capacity(n as usize);
+    let (mut lx, mut ly) = (x0, y0);
+    for i in 1..=n {
+        let x = x0 + (x1 - x0) * i / n;
+        let y = y0 + (y1 - y0) * i / n;
+        // A diagonal step goes through a side tile first (ships move 4-connected).
+        if x != lx && y != ly {
+            let side = map.tile(x, ly)?;
+            if !map.is_water(side) {
+                return None;
+            }
+            out.push(side);
+        }
+        let t = map.tile(x, y)?;
+        if !map.is_water(t) {
+            return None;
+        }
+        out.push(t);
+        (lx, ly) = (x, y);
+    }
+    Some(out)
 }
 
 impl WarshipExecution {
@@ -510,19 +545,27 @@ impl WarshipExecution {
             target: None,
             last_shot: 0,
             random: PseudoRandom::new(patrol as i64 ^ player as i64),
+            retry_at: 0,
             active: true,
         }
     }
 
-    fn set_path(game: &mut Game, id: UnitId, to: TileRef) {
+    /// Routes the ship to `to`; false if there is no route.
+    fn set_path(game: &mut Game, id: UnitId, to: TileRef) -> bool {
         let Some(from) = game.unit(id).map(|u| u.tile()) else {
-            return;
+            return false;
         };
-        if let Some(path) = game.find_water_path(from, to) {
-            if let Some(u) = game.unit_mut(id) {
-                u.path = path;
-                u.path_index = 0;
+        let path =
+            straight_water_route(game.map(), from, to).or_else(|| game.find_water_path(from, to));
+        match path {
+            Some(path) => {
+                if let Some(u) = game.unit_mut(id) {
+                    u.path = path;
+                    u.path_index = 0;
+                }
+                true
             }
+            None => false,
         }
     }
 }
@@ -640,8 +683,9 @@ impl Execution for WarshipExecution {
             } else if ticks.is_multiple_of(10) {
                 Self::set_path(game, id, t.tile());
             }
-        } else if me.remaining_path().is_empty() {
-            // Patrol: a random water tile near the patrol point.
+        } else if me.remaining_path().is_empty() && ticks >= self.retry_at {
+            // Patrol: a random water tile near the patrol point (wait a while after a failure).
+            self.retry_at = ticks + 20;
             let map = game.map();
             let (px, py) = (map.x(self.patrol) as i64, map.y(self.patrol) as i64);
             let range = w.warship_patrol_range as i64;

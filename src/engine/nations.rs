@@ -18,10 +18,12 @@ use super::game::{Execution, Game};
 use super::player::{PlayerId, PlayerType, Relation};
 use super::rules;
 use super::structures::{build_cost, placement, ConstructionExecution};
+use super::units::UnitId;
 use super::units::UnitKind;
 use super::util::simple_hash;
 use super::weapons::{
-    blast_radius, can_launch, nuke_cost, warship_spawn, NukeExecution, WarshipExecution,
+    blast_radius, can_launch, nuke_cost, warship_spawn, MoveWarshipExecution, NukeExecution,
+    WarshipExecution,
 };
 
 /// Nation names: our own syllable generator (D20: no upstream names or flags).
@@ -649,7 +651,8 @@ impl NationExecution {
             return;
         }
         let ports = game.unit_count(me, UnitKind::Port);
-        if ports == 0 || game.unit_count(me, UnitKind::Warship) >= ports {
+        // One per port, at most 8 (ours: keeps late games fast).
+        if ports == 0 || game.unit_count(me, UnitKind::Warship) >= ports.min(8) {
             return;
         }
         let cost = build_cost(game, me, UnitKind::Warship);
@@ -673,6 +676,41 @@ impl NationExecution {
                 game.add_execution(Box::new(WarshipExecution::new(me, t)));
                 return;
             }
+        }
+    }
+
+    /// Upstream `counterWarshipInfestation` (reduced, Medium and up): send idle warships after
+    /// the nearest enemy warship on the same water, so boats can get through.
+    fn hunt_warships(&mut self, game: &mut Game) {
+        let me = self.me;
+        if Self::difficulty(game) == Difficulty::Easy || !self.random.chance(2) {
+            return;
+        }
+        let map = game.map();
+        let mine: Vec<(UnitId, TileRef)> = game
+            .player_units(me, Some(UnitKind::Warship))
+            .map(|u| (u.id(), u.tile()))
+            .collect();
+        let foes: Vec<TileRef> = game
+            .units()
+            .iter()
+            .filter(|u| {
+                u.is_active() && u.kind() == UnitKind::Warship && !game.is_friendly(me, u.owner())
+            })
+            .map(|u| u.tile())
+            .collect();
+        let mut orders = Vec::new();
+        for (id, at) in mine {
+            if let Some(&f) = foes
+                .iter()
+                .filter(|&&f| game.water().share_body(map, f, at))
+                .min_by_key(|&&f| map.euclidean_dist_squared(f, at))
+            {
+                orders.push((id, f));
+            }
+        }
+        for (id, f) in orders {
+            game.add_execution(Box::new(MoveWarshipExecution::new(me, id, f)));
         }
     }
 
@@ -722,20 +760,37 @@ impl NationExecution {
             let rb = game.player(me).map_or(0.0, |p| p.relation_value(b));
             ra.total_cmp(&rb)
         });
-        let Some(&target) = candidates.first() else {
+        let Some(&hated) = candidates.first() else {
             return;
         };
-        // Only nuke players we really dislike (Medium) or anyone hostile-ish (Hard and up).
+        // Only nuke players we really dislike (Medium) or anyone hostile-ish (Hard and up)...
         let rel = game
             .player(me)
-            .map_or(Relation::Neutral, |p| p.relation(target));
+            .map_or(Relation::Neutral, |p| p.relation(hated));
         let ok = match d {
             Difficulty::Medium => rel == Relation::Hostile,
             _ => rel <= Relation::Distrustful,
         };
-        if !ok {
+        // ...or, holding over half the land, the biggest holdout (ours: ends island stalemates,
+        // like upstream's crown and endgame strikes).
+        let land = game.map().num_land_tiles().max(1) as u64;
+        let leading = game
+            .player(me)
+            .is_some_and(|p| p.num_tiles() as u64 * 2 > land);
+        let target = if ok {
+            hated
+        } else if leading {
+            match candidates
+                .iter()
+                .copied()
+                .max_by_key(|&e| (game.player(e).map_or(0, |p| p.num_tiles()), e))
+            {
+                Some(t) => t,
+                None => return,
+            }
+        } else {
             return;
-        }
+        };
         let Some(t) = self.target_tile_of(game, target) else {
             return;
         };
@@ -874,6 +929,7 @@ impl Execution for NationExecution {
         self.handle_alliance_requests(game);
         self.handle_structures(game);
         self.maybe_spawn_warship(game);
+        self.hunt_warships(game);
         self.handle_embargoes(game);
         self.choose_attack(game, &mut b);
         self.maybe_donate(game);

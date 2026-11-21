@@ -8,7 +8,7 @@ use std::process::ExitCode;
 use std::time::Instant;
 
 use laukofront::config::{Difficulty, GameConfig, MapSize, GAME_CONFIG_PATH};
-use laukofront::engine::{new_match, run_turn, Game, MatchSetup};
+use laukofront::engine::{new_match, run_turn, Game, MapChoice, MatchSetup};
 
 fn leader(g: &Game) -> String {
     let land = g.map().num_land_tiles() as f64;
@@ -27,6 +27,7 @@ fn leader(g: &Game) -> String {
 fn run() -> Result<(), String> {
     let (mut size, mut bots, mut seed, mut max_ticks) = (MapSize::Small, 10u32, 1i64, 60_000u64);
     let (mut nations, mut difficulty) = (0u32, Difficulty::Medium);
+    let mut map = MapChoice::default();
     let mut it = std::env::args().skip(1);
     while let Some(a) = it.next() {
         let v = it.next().ok_or(format!("{a} needs a value"))?;
@@ -41,6 +42,7 @@ fn run() -> Result<(), String> {
             }
             "--bots" => bots = v.parse().map_err(|e| format!("--bots: {e}"))?,
             "--seed" => seed = v.parse().map_err(|e| format!("--seed: {e}"))?,
+            "--map" => map = MapChoice::parse(&v).ok_or(format!("unknown map {v}"))?,
             "--nations" => nations = v.parse().map_err(|e| format!("--nations: {e}"))?,
             "--difficulty" => difficulty = Difficulty::parse(&v).ok_or("unknown difficulty")?,
             "--max-ticks" => max_ticks = v.parse().map_err(|e| format!("--max-ticks: {e}"))?,
@@ -56,6 +58,7 @@ fn run() -> Result<(), String> {
             bots,
             nations,
             difficulty,
+            map,
         },
     )?;
     let start = Instant::now();

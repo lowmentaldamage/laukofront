@@ -173,6 +173,7 @@ pub struct TerrainConfig {
     pub mountain_exponent: f64,
     pub min_island_tiles: u32,
     pub min_lake_tiles: u32,
+    pub peak_share: f64,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -430,6 +431,8 @@ impl GameConfig {
             mountain_exponent: t.mountain_exponent,
             min_island_tiles: t.min_island_tiles,
             min_lake_tiles: t.min_lake_tiles,
+            style: Default::default(),
+            peak_share: t.peak_share,
         }
     }
 }

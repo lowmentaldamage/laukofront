@@ -222,3 +222,22 @@ ended before only because of the water-border bug fixed in D40.
 Manual check: autoplay screenshot with 6 nations shows the diplomacy menu on the biggest nation
 (alliance, embargo, target, reactions, info line with relation), nation names on the map and in
 the leaderboard.
+
+### 2026-11-21 — Port milestone P11 (maps)
+
+**143 passed, 0 failed** (73 unit, 10 / 16 / 4 / 13 / 6 / 13 / 8 in
+`engine_p2/p3/p4/p7_p8/p9/p10/p11`).
+
+New: map styles (archipelago has less land and more islands, pangaea is one landmass, lakes has
+many lakes), peaks impassable and not counted, rivers reach the sea, biomes follow latitude, real
+places are land or sea (Sahara, Siberia, Brazil, Australia, Canada; Atlantic, Pacific, Indian Ocean;
+the Caspian is a lake; England, Ireland), Earth maps build the same every time, every map name
+parses and plays, a ship crosses the Atlantic in under 50 ms; mask format round trip and corrupt
+files rejected. `engine_p4` conquest test moved to seed 7 (D41).
+
+`bot_match` (8 bots + 4 nations, small): continents, pangaea and lakes seeds 1-3 all end with a
+winner; archipelago seeds 1-6: 5 of 6. Earth maps (20 bots + 8 nations): all six end with a winner
+(8-30 game minutes).
+
+Manual check: World and Europe with autoplay. Coastlines, biomes, labels, alliance panel and
+minimap show correctly; fixed the diplomacy menu drawing over the end screen.

@@ -22,7 +22,7 @@ is generated from `Cargo.lock` and attached here.
 
 | Asset | Source | License |
 |---|---|---|
-| (none yet) | | |
+| Coastlines and lakes of the real-Earth maps (`assets/maps/*.lkmap`, converted) | Natural Earth 1:50m physical vectors (`ne_50m_land`, `ne_50m_lakes`), <https://www.naturalearthdata.com> | public domain |
 
 No assets are taken from OpenFront. Every font, sound, music track and icon added later gets a row
 here with its source and license.

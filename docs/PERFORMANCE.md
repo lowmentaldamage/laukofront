@@ -201,3 +201,18 @@ Frame time (`--autoplay --perf-run 60`, 1440x900):
 
 Engine only (`bot_match`, 30 bots + 10 hard nations): medium 6 771 ticks in 1.2 s (0.18 ms per
 tick), large 10 041 ticks in 3.5 s (0.35 ms per tick).
+
+### 2026-11-21 — P11: maps
+
+Frame time (`--autoplay --perf-run 60`, 1440x900):
+
+| Map | Players | Avg | FPS | p99 | Max | Frames > 33 ms |
+|---|---|---|---|---|---|---|
+| world (2000x766) | 50 bots + 16 nations | 2.18 ms | 459 | 4.87 ms | 7.18 ms | 0 |
+| europe (1200x1000) | 25 + 10 | 1.97 ms | 509 | 4.18 ms | 8.49 ms | 0 |
+| archipelago large | 50 + 10 | 2.24 ms | 447 | 4.96 ms | 7.87 ms | 0 |
+
+Ship routes (`water_route_timing`, 40 random coast pairs): worst 0.85 ms (generated large), 1.48 ms
+(World, was 40 ms before the coarse graph), 1.15 ms (Americas), 1.25 ms (Europe). Map build:
+57-193 ms for the Earth maps, 33-43 ms for small generated maps. Engine (`bot_match`, 20 bots + 8
+nations): World 18 041 ticks in 3.0 s (0.17 ms per tick).

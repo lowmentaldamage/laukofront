@@ -2,8 +2,9 @@
 //! `GameRunner.ts` and `ExecutionManager.ts` (`Executor.createExec`).
 
 use crate::config::{Difficulty, GameConfig, MapSize};
+use crate::engine_lib::earth::EarthMap;
 use crate::engine_lib::game_map::TileRef;
-use crate::engine_lib::terrain;
+use crate::engine_lib::terrain::{self, MapStyle};
 
 use super::attack::AttackId;
 use super::attack_exec::{AttackExecution, RetreatExecution, WinCheckExecution};
@@ -108,12 +109,54 @@ pub enum Intent {
 /// What a single-player match is created with.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct MatchSetup {
+    /// Size of a generated map (ignored for real-Earth maps).
     pub size: MapSize,
     pub seed: i64,
     pub bots: u32,
     /// AI nations (stronger than bots: they ally, build, sail and nuke).
     pub nations: u32,
     pub difficulty: Difficulty,
+    pub map: MapChoice,
+}
+
+/// Which map a match is played on.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum MapChoice {
+    /// Generated from the seed in this style.
+    Generated(MapStyle),
+    /// A real-Earth map (the same every match).
+    Earth(EarthMap),
+}
+
+impl Default for MapChoice {
+    fn default() -> Self {
+        MapChoice::Generated(MapStyle::Continents)
+    }
+}
+
+impl MapChoice {
+    /// `continents`, `archipelago`, `pangaea`, `lakes`, or an Earth map id (`world`, `europe`…).
+    pub fn parse(s: &str) -> Option<Self> {
+        MapStyle::parse(s)
+            .map(MapChoice::Generated)
+            .or_else(|| EarthMap::parse(s).map(MapChoice::Earth))
+    }
+
+    pub fn name(self) -> &'static str {
+        match self {
+            MapChoice::Generated(s) => s.name(),
+            MapChoice::Earth(e) => e.id(),
+        }
+    }
+
+    /// Every map the command line accepts.
+    pub fn all() -> Vec<MapChoice> {
+        MapStyle::ALL
+            .into_iter()
+            .map(MapChoice::Generated)
+            .chain(EarthMap::ALL.into_iter().map(MapChoice::Earth))
+            .collect()
+    }
 }
 
 impl MatchSetup {
@@ -125,6 +168,7 @@ impl MatchSetup {
             bots,
             nations: 0,
             difficulty: Difficulty::Medium,
+            map: MapChoice::default(),
         }
     }
 
@@ -146,14 +190,25 @@ pub const HUMAN: PlayerId = 1;
 /// by sending `Intent::Spawn` during the spawn phase.
 pub fn new_match(mut config: GameConfig, setup: MatchSetup) -> Result<Game, String> {
     config.difficulty = setup.difficulty;
-    let params = config.terrain_params(setup.size);
-    let map = terrain::generate(&params, setup.seed).ok_or("map size too small")?;
+    let map = match setup.map {
+        MapChoice::Generated(style) => {
+            let mut params = config.terrain_params(setup.size);
+            params.style = style;
+            terrain::generate(&params, setup.seed).ok_or("map size too small")?
+        }
+        MapChoice::Earth(e) => e.build().ok_or(format!("map {} is damaged", e.id()))?,
+    };
     if (setup.bots + setup.nations) as usize + 1
         > crate::engine_lib::game_map::PLAYER_ID_MASK as usize
     {
         return Err(format!("too many bots: {}", setup.bots));
     }
-    let mut game = Game::new(config, map, format!("laukofront-{}", setup.seed));
+    // The default map keeps the old id, so seeds replay as before.
+    let game_id = match setup.map {
+        MapChoice::Generated(MapStyle::Continents) => format!("laukofront-{}", setup.seed),
+        m => format!("laukofront-{}-{}", m.name(), setup.seed),
+    };
+    let mut game = Game::new(config, map, game_id);
     let human = game.add_player(PlayerInfo::new("human", "You", PlayerType::Human));
     debug_assert_eq!(human, HUMAN);
     game.add_execution(Box::new(SpawnTimerExecution::new()));

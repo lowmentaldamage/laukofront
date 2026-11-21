@@ -2,6 +2,7 @@
 //! client share. No Bevy types, no wall-clock time, no platform transcendental maths.
 
 pub mod detmath;
+pub mod earth;
 pub mod game_map;
 pub mod random;
 pub mod terrain;

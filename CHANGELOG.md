@@ -33,3 +33,6 @@ Versions follow the build guide milestones. `1.0.0` is the finished game.
 - P10: alliances (request, accept, renew, break), traitors, relations, embargoes, donations,
   targets, reactions; AI nations with four difficulties; diplomacy menu and panel; ally and
   traitor colours on the map and leaderboard.
+- P11: map styles (continents, archipelago, pangaea, lakes), rivers, impassable peaks, biome
+  colours; real-Earth maps (World, Europe, Asia, Africa, Americas, British Isles) from Natural Earth;
+  `--map`, `--list-maps`; faster ship routing; nations hunt warships and finish island maps.

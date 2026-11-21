@@ -499,6 +499,7 @@ fn nation_match(seed: i64, d: Difficulty) -> Game {
             bots: 6,
             nations: 4,
             difficulty: d,
+            map: Default::default(),
         },
     )
     .unwrap();

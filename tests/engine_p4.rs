@@ -11,12 +11,12 @@ fn bots_only(seed: i64, bots: u32) -> Game {
     new_match(config(), MatchSetup::bots_only(MapSize::Small, seed, bots)).unwrap()
 }
 
-/// Upstream guide requirement: a match between AIs reaches a winner. Seed 3 is a map where the
-/// bots share one landmass (boats are a later milestone), so the win is by conquest, not the
-/// 170-minute limit.
+/// Upstream guide requirement: a match between AIs reaches a winner. Seed 7 is a map where the
+/// bots can reach each other (bots do not cross oceans, as upstream), so the win is by conquest,
+/// not the 170-minute limit. (Seed 3 until P11 added rivers to the generator.)
 #[test]
 fn bots_only_match_reaches_a_conquest_winner() {
-    let mut g = bots_only(3, 10);
+    let mut g = bots_only(7, 10);
     while g.winner().is_none() && g.ticks() < 30_000 {
         run_turn(&mut g, &[]);
     }

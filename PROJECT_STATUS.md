@@ -1,7 +1,7 @@
 # Project status
 
-**Date:** 2026-11-20
-**State:** playable against bots and AI nations with diplomacy, boats, buildings, trade, warships and nukes (port milestones P0–P10). Next: maps (P11), menus (P12), save/audio (P13), release (P14).
+**Date:** 2026-11-21
+**State:** playable against bots and AI nations with diplomacy, boats, buildings, trade, warships and nukes, on generated or real-Earth maps (port milestones P0–P11). Next: menus (P12), save/audio (P13), release (P14).
 
 ## Done
 
@@ -18,7 +18,7 @@
 
 ## Not done
 
-- P11 maps (better generator, real-Earth maps), P12 menus and game modes (teams), P13 save/load,
+- P12 menus and game modes (teams), P13 save/load,
   audio and polish, P14 performance pass and release.
 - Later plan: online multiplayer, accounts, ranked play, clans.
 

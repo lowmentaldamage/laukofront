@@ -26,7 +26,7 @@ Milestones in order. Stage numbers refer to the build guide.
 | P8 Buildings | **done** — city, port, factory, defense post, upgrades, trade ships, factory income, build bar |
 | P9 Warships and nukes | **done** — silo, SAM, warships, atom/hydrogen bomb, MIRV, fallout |
 | P10 Diplomacy and nations | **done** — alliances, traitors, embargo, donations, targets, reactions, nation AI with 4 difficulties |
-| P11 Maps | richer generator (biomes, rivers, styles) and real-Earth maps from Natural Earth |
+| P11 Maps | **done** — styles, rivers, peaks, biomes; World, Europe, Asia, Africa, Americas, British Isles |
 | P12 Menus and modes | main menu, match setup, teams, Doomsday Clock, settings |
 | P13 Save, audio, polish | snapshots, sound, end-of-match statistics |
 | P14 Performance and release | border-tile encirclement, mid-range PC, zip, v1.0.0 |

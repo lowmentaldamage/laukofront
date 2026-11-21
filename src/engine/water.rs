@@ -21,7 +21,7 @@ const CELL: u32 = 8;
 /// Routes shorter than this (manhattan) skip the coarse step.
 const DIRECT_LIMIT: u32 = 96;
 
-/// Water-body ids per tile and reusable search buffers.
+/// Water-body ids per tile, the coarse routing graph and reusable search buffers.
 #[derive(Debug, Clone)]
 pub struct WaterInfo {
     /// Water body of each water tile, NONE for land.
@@ -32,8 +32,13 @@ pub struct WaterInfo {
     cost: Vec<u32>,
     coarse_w: u32,
     coarse_h: u32,
-    /// Coarse cells containing any water.
-    coarse_water: Vec<bool>,
+    /// Coarse node of each water tile: one node per connected piece of water inside an 8x8 cell
+    /// (upstream's abstract graph).
+    node_of: Vec<u32>,
+    /// Per node: its cell and a representative water tile (nearest the piece's middle).
+    nodes: Vec<(u32, TileRef)>,
+    /// Per node: neighbouring nodes (pieces that touch across a cell edge) and step cost.
+    edges: Vec<Vec<(u32, u32)>>,
     corridor: Vec<bool>,
 }
 
@@ -63,13 +68,70 @@ impl WaterInfo {
         }
         let coarse_w = map.width().div_ceil(CELL);
         let coarse_h = map.height().div_ceil(CELL);
-        let mut counts = vec![0u32; (coarse_w * coarse_h) as usize];
+        let cell_of = |t: TileRef| (map.y(t) / CELL) * coarse_w + map.x(t) / CELL;
+
+        // Nodes: flood fill water inside each cell.
+        let mut node_of = vec![NONE; n];
+        let mut nodes: Vec<(u32, TileRef)> = Vec::new();
+        let mut piece: Vec<TileRef> = Vec::new();
+        for start in 0..map.num_tiles() {
+            if body[start as usize] == NONE || node_of[start as usize] != NONE {
+                continue;
+            }
+            let id = nodes.len() as u32;
+            let cell = cell_of(start);
+            piece.clear();
+            node_of[start as usize] = id;
+            stack.push(start);
+            while let Some(t) = stack.pop() {
+                piece.push(t);
+                let k = map.neighbors4(t, &mut buf);
+                for &nb in &buf[..k] {
+                    if body[nb as usize] != NONE
+                        && node_of[nb as usize] == NONE
+                        && cell_of(nb) == cell
+                    {
+                        node_of[nb as usize] = id;
+                        stack.push(nb);
+                    }
+                }
+            }
+            let (sx, sy) = piece.iter().fold((0u64, 0u64), |(a, b), &t| {
+                (a + map.x(t) as u64, b + map.y(t) as u64)
+            });
+            let (cx, cy) = (sx / piece.len() as u64, sy / piece.len() as u64);
+            let rep = piece
+                .iter()
+                .copied()
+                .min_by_key(|&t| (map.x(t) as u64).abs_diff(cx) + (map.y(t) as u64).abs_diff(cy))
+                .unwrap_or(start);
+            nodes.push((cell, rep));
+        }
+        // Edges: pieces whose tiles touch across a cell edge (right and down neighbours).
+        let mut edges: Vec<Vec<(u32, u32)>> = vec![Vec::new(); nodes.len()];
         for t in 0..map.num_tiles() {
-            if map.is_water(t) {
-                counts[((map.y(t) / CELL) * coarse_w + map.x(t) / CELL) as usize] += 1;
+            let a = node_of[t as usize];
+            if a == NONE {
+                continue;
+            }
+            let (x, y) = (map.x(t), map.y(t));
+            for nb in [
+                (x + 1 < map.width()).then(|| t + 1),
+                (y + 1 < map.height()).then(|| t + map.width()),
+            ]
+            .into_iter()
+            .flatten()
+            {
+                let b = node_of[nb as usize];
+                if b == NONE || b == a || edges[a as usize].iter().any(|e| e.0 == b) {
+                    continue;
+                }
+                let (ra, rb) = (nodes[a as usize].1, nodes[b as usize].1);
+                let c = map.manhattan_dist(ra, rb) * 10;
+                edges[a as usize].push((b, c));
+                edges[b as usize].push((a, c));
             }
         }
-        let coarse_water: Vec<bool> = counts.iter().map(|&c| c > 0).collect();
         Self {
             body,
             gen: 0,
@@ -78,8 +140,10 @@ impl WaterInfo {
             cost: vec![0; n],
             coarse_w,
             coarse_h,
-            corridor: vec![false; coarse_water.len()],
-            coarse_water,
+            node_of,
+            nodes,
+            edges,
+            corridor: vec![false; (coarse_w * coarse_h) as usize],
         }
     }
 
@@ -87,58 +151,62 @@ impl WaterInfo {
         ((map.y(t) / CELL) * self.coarse_w + map.x(t) / CELL) as usize
     }
 
-    /// A* over coarse cells (8 directions) from the cell of `src` to the cell of `dst`.
-    fn coarse_route(&self, map: &GameMap, src: TileRef, dst: TileRef) -> Option<Vec<usize>> {
-        let (cw, ch) = (self.coarse_w as i64, self.coarse_h as i64);
-        let start = self.cell_of(map, src);
-        let goal = self.cell_of(map, dst);
-        let (gx, gy) = ((goal as i64) % cw, (goal as i64) / cw);
-        let h = |c: usize| {
-            let dx = ((c as i64) % cw - gx).unsigned_abs();
-            let dy = ((c as i64) / cw - gy).unsigned_abs();
+    /// Coarse nodes a tile starts or ends in: its own if water, its water neighbours' if shore.
+    fn nodes_at(&self, map: &GameMap, t: TileRef) -> Vec<u32> {
+        if map.is_water(t) {
+            return vec![self.node_of[t as usize]];
+        }
+        let mut buf = [0; 4];
+        let k = map.neighbors4(t, &mut buf);
+        buf[..k]
+            .iter()
+            .map(|&nb| self.node_of[nb as usize])
+            .filter(|&x| x != NONE)
+            .collect()
+    }
+
+    /// A* over the coarse graph from the pieces of water at `src` to those at `dst`.
+    fn coarse_route(&self, map: &GameMap, src: TileRef, dst: TileRef) -> Option<Vec<u32>> {
+        let starts = self.nodes_at(map, src);
+        let goals = self.nodes_at(map, dst);
+        if starts.is_empty() || goals.is_empty() {
+            return None;
+        }
+        let (gx, gy) = (map.x(dst) as i64, map.y(dst) as i64);
+        let h = |nd: u32| {
+            let r = self.nodes[nd as usize].1;
+            let dx = (map.x(r) as i64 - gx).unsigned_abs();
+            let dy = (map.y(r) as i64 - gy).unsigned_abs();
             let (lo, hi) = if dx < dy { (dx, dy) } else { (dy, dx) };
             hi * 10 + lo * 4
         };
-        let n = self.coarse_water.len();
+        let n = self.nodes.len();
         let mut cost = vec![u64::MAX; n];
-        let mut from = vec![usize::MAX; n];
+        let mut from = vec![NONE; n];
         let mut open = BinaryHeap::new();
-        cost[start] = 0;
-        open.push(Reverse((h(start), start)));
-        while let Some(Reverse((_, c))) = open.pop() {
-            if c == goal {
+        for &s in &starts {
+            cost[s as usize] = 0;
+            open.push(Reverse((h(s), s)));
+        }
+        while let Some(Reverse((f, c))) = open.pop() {
+            if f > cost[c as usize].saturating_add(h(c)) {
+                continue;
+            }
+            if goals.contains(&c) {
                 let mut route = vec![c];
                 let mut cur = c;
-                while from[cur] != usize::MAX {
-                    cur = from[cur];
+                while from[cur as usize] != NONE {
+                    cur = from[cur as usize];
                     route.push(cur);
                 }
                 route.reverse();
                 return Some(route);
             }
-            let (x, y) = ((c as i64) % cw, (c as i64) / cw);
-            for (dx, dy, step) in [
-                (1, 0, 10),
-                (-1, 0, 10),
-                (0, 1, 10),
-                (0, -1, 10),
-                (1, 1, 14),
-                (1, -1, 14),
-                (-1, 1, 14),
-                (-1, -1, 14),
-            ] {
-                let (nx, ny) = (x + dx, y + dy);
-                if nx < 0 || ny < 0 || nx >= cw || ny >= ch {
-                    continue;
-                }
-                let nb = (ny * cw + nx) as usize;
-                if !self.coarse_water[nb] && nb != goal {
-                    continue;
-                }
-                let c2 = cost[c] + step;
-                if c2 < cost[nb] {
-                    cost[nb] = c2;
-                    from[nb] = c;
+            for &(nb, step) in &self.edges[c as usize] {
+                let c2 = cost[c as usize] + step as u64;
+                if c2 < cost[nb as usize] {
+                    cost[nb as usize] = c2;
+                    from[nb as usize] = c;
                     open.push(Reverse((c2 + h(nb), nb)));
                 }
             }
@@ -181,45 +249,57 @@ impl WaterInfo {
         if src == dst {
             return Some(vec![dst]);
         }
+        if !self.share_body(map, src, dst) {
+            return None;
+        }
         if map.manhattan_dist(src, dst) > DIRECT_LIMIT {
-            if let Some(p) = self.waypoint_path(map, src, dst) {
-                return Some(p);
+            if let Some(route) = self.coarse_route(map, src, dst) {
+                if let Some(p) = self.waypoint_path(map, src, dst, &route) {
+                    return Some(p);
+                }
+                // A leg was blocked: search near the coarse route before the whole sea.
+                self.mark_corridor(&route);
+                if let Some(p) = self.search(map, src, dst, true) {
+                    return Some(p);
+                }
             }
         }
         self.search(map, src, dst, false)
     }
 
-    /// Follows the coarse route: short tile searches between water tiles near every 4th coarse
-    /// cell, joined. `None` if any leg fails (the caller then searches the whole sea).
-    fn waypoint_path(&mut self, map: &GameMap, src: TileRef, dst: TileRef) -> Option<Vec<TileRef>> {
-        let route = self.coarse_route(map, src, dst)?;
-        let cw = self.coarse_w;
-        let mut waypoints: Vec<TileRef> = Vec::new();
-        for (i, &c) in route.iter().enumerate() {
-            if i == 0 || i % 4 != 0 || i + 2 >= route.len() {
-                continue;
-            }
-            // The water tile in this cell nearest its centre.
-            let (cx, cy) = (
-                (c as u32 % cw) * CELL + CELL / 2,
-                (c as u32 / cw) * CELL + CELL / 2,
-            );
-            let mut best: Option<(u32, TileRef)> = None;
-            for y in (cy.saturating_sub(CELL / 2))..(cy + CELL / 2).min(map.height()) {
-                for x in (cx.saturating_sub(CELL / 2))..(cx + CELL / 2).min(map.width()) {
-                    let t = y * map.width() + x;
-                    if map.is_water(t) {
-                        let d = x.abs_diff(cx) + y.abs_diff(cy);
-                        if best.is_none_or(|(bd, _)| d < bd) {
-                            best = Some((d, t));
-                        }
+    /// Marks the coarse cells within 2 of the route's cells as the search corridor.
+    fn mark_corridor(&mut self, route: &[u32]) {
+        self.corridor.fill(false);
+        let (cw, ch) = (self.coarse_w as i64, self.coarse_h as i64);
+        for &nd in route {
+            let c = self.nodes[nd as usize].0 as i64;
+            let (x, y) = (c % cw, c / cw);
+            for dy in -2..=2 {
+                for dx in -2..=2 {
+                    let (nx, ny) = (x + dx, y + dy);
+                    if nx >= 0 && ny >= 0 && nx < cw && ny < ch {
+                        self.corridor[(ny * cw + nx) as usize] = true;
                     }
                 }
             }
-            if let Some((_, t)) = best {
-                waypoints.push(t);
-            }
         }
+    }
+
+    /// Follows the coarse route: short tile searches between the representative tiles of every
+    /// 3rd node, joined. `None` if any leg fails.
+    fn waypoint_path(
+        &mut self,
+        map: &GameMap,
+        src: TileRef,
+        dst: TileRef,
+        route: &[u32],
+    ) -> Option<Vec<TileRef>> {
+        let mut waypoints: Vec<TileRef> = route
+            .iter()
+            .enumerate()
+            .filter(|&(i, _)| i > 0 && i % 3 == 0 && i + 2 < route.len())
+            .map(|(_, &nd)| self.nodes[nd as usize].1)
+            .collect();
         waypoints.push(dst);
         let mut path: Vec<TileRef> = Vec::new();
         let mut from = src;
@@ -418,7 +498,13 @@ mod timing {
     #[test]
     #[ignore]
     fn water_route_timing() {
-        let map = generate(&TerrainParams::new(1600, 1000), 3).unwrap();
+        let map = match std::env::var("ROUTE_MAP")
+            .ok()
+            .and_then(|m| crate::engine_lib::earth::EarthMap::parse(&m))
+        {
+            Some(e) => e.build().unwrap(),
+            None => generate(&TerrainParams::new(1600, 1000), 3).unwrap(),
+        };
         let mut w = WaterInfo::new(&map);
         let shores: Vec<TileRef> = (0..map.num_tiles()).filter(|&t| map.is_shore(t)).collect();
         let mut worst = 0.0f64;

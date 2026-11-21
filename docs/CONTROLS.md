@@ -48,6 +48,8 @@ Clicks on HUD panels never reach the map.
 ```powershell
 laukofront --size small|medium|large --bots 20 --seed 123
 laukofront --nations 6 --difficulty easy|medium|hard|impossible
+laukofront --map continents|archipelago|pangaea|lakes|world|europe|asia|africa|americas|british-isles
+laukofront --list-maps           # every map with size, land share, suggested players
 laukofront --autoplay            # the game plays for you (demo)
 laukofront --perf-run 60         # 1080p frame-time measurement, then exit
 laukofront --screenshot shot.png --screenshot-at 10

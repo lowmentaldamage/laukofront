@@ -9,7 +9,8 @@ laukofront ports the OpenFront engine (see `NOTICE.md`). Module names follow ups
 | `engine_lib::random` | `engine-lib/PseudoRandom.ts` | sfc32 PRNG, bit-identical to upstream | no |
 | `engine_lib::detmath` | `engine-lib/DetMath.ts` | deterministic `exp`/`log`/`pow`/`atan2` | no |
 | `engine_lib::game_map` | `engine-lib/game/GameMapImpl.ts` | tile grid: terrain byte + owner state per tile | no |
-| `engine_lib::terrain` | — (ours) | map generator | no |
+| `engine_lib::terrain` | — (ours) | map generator: styles, rivers, peaks, biomes | no |
+| `engine_lib::earth` | — (ours) | real-Earth maps: mask format, built-in files, map building | no |
 | `config` | parts of `Config.ts` / `EngineConfig.ts` | `GameConfig` loaded from `assets/config/game.toml` | no |
 | `engine::player` | `game/PlayerImpl.ts` (data) | `Player`, `PlayerInfo`, `PlayerType` | no |
 | `engine::rules` | `Config.troopCap`, `troopIncreaseRate`, `goldAdditionRate`, `startManpower`, `attackAmount` | formulas | no |
@@ -20,7 +21,7 @@ laukofront ports the OpenFront engine (see `NOTICE.md`). Module names follow ups
 | `engine::clusters` | `PlayerExecution.removeClusters` (simplified, D25) | encirclement | no |
 | `engine::bots` | `TribeExecution`, `TribeAttackBehavior`, `AiAttackBehavior` (land) | bot AI | no |
 | `engine::units` | `UnitImpl` (parts) | `Unit`, `UnitKind` | no |
-| `engine::water` | pathfinding (simplified, D35) | water bodies, ship routes | no |
+| `engine::water` | pathfinding, abstract graph (simplified, D35, D41) | water bodies, coarse water graph, ship routes | no |
 | `engine::boats` | `TransportShipExecution`, `BoatRetreatExecution`, `TransportShipUtils`, trade (D36) | ships | no |
 | `engine::structures` | `ConstructionExecution`, `UpgradeStructureExecution`, unit costs, factories (D36) | buildings | no |
 | `engine::weapons` | `NukeExecution`, `MIRVExecution`, `SAMLauncherExecution`, `WarshipExecution`, `MoveWarshipExecution` (simplified, D39) | missiles, SAMs, warships | no |
@@ -35,7 +36,7 @@ laukofront ports the OpenFront engine (see `NOTICE.md`). Module names follow ups
 | `render::effects` | — | capture flash overlay, attack-front shimmer, spawn rings | yes |
 | `client::settings` | — | settings file | yes |
 | `menu` | — | Stage 12 | yes |
-| `bin/engine_bench`, `bin/map_preview`, `bin/bot_match` | — | tools | no |
+| `bin/engine_bench`, `bin/map_preview`, `bin/bot_match`, `bin/earth_import` | — | tools (`earth_import` turns Natural Earth shapefiles into `assets/maps/*.lkmap`) | no |
 
 ## Allowed dependencies
 

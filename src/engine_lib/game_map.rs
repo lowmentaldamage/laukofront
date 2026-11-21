@@ -28,6 +28,33 @@ pub enum TerrainType {
     Lake,
 }
 
+/// What grows on a land tile (ours, for colours only; never affects the rules).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[repr(u8)]
+pub enum Biome {
+    Temperate,
+    Forest,
+    Steppe,
+    Desert,
+    Jungle,
+    Taiga,
+    Tundra,
+    Snow,
+}
+
+impl Biome {
+    pub const ALL: [Biome; 8] = [
+        Biome::Temperate,
+        Biome::Forest,
+        Biome::Steppe,
+        Biome::Desert,
+        Biome::Jungle,
+        Biome::Taiga,
+        Biome::Tundra,
+        Biome::Snow,
+    ];
+}
+
 #[derive(Debug, Clone)]
 pub struct GameMap {
     width: u32,
@@ -36,6 +63,8 @@ pub struct GameMap {
     state: Vec<u16>,
     num_land_tiles: u32,
     num_fallout: u32,
+    /// One `Biome` per tile (visual only; empty = all temperate).
+    biomes: Vec<u8>,
 }
 
 impl GameMap {
@@ -53,6 +82,7 @@ impl GameMap {
             state,
             num_land_tiles,
             num_fallout: 0,
+            biomes: Vec::new(),
         })
     }
 
@@ -96,6 +126,21 @@ impl GameMap {
     /// Raw terrain bytes (for the renderer).
     pub fn terrain_bytes(&self) -> &[u8] {
         &self.terrain
+    }
+
+    /// The tile's biome (visual only).
+    pub fn biome(&self, t: TileRef) -> Biome {
+        self.biomes
+            .get(t as usize)
+            .and_then(|&b| Biome::ALL.get(b as usize).copied())
+            .unwrap_or(Biome::Temperate)
+    }
+
+    /// Sets every tile's biome (`Biome as u8`); ignored if the length does not match.
+    pub fn set_biomes(&mut self, biomes: Vec<u8>) {
+        if biomes.len() == self.terrain.len() {
+            self.biomes = biomes;
+        }
     }
 
     // ----- terrain -----

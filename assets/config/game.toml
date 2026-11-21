@@ -30,6 +30,7 @@ edge_fade = 0.45
 mountain_exponent = 1.6
 min_island_tiles = 60
 min_lake_tiles = 40
+peak_share = 0.006               # highest share of land that becomes impassable peaks
 
 [troops]                        # upstream: Config.troopCap / troopIncreaseRate / startManpower
 human_start = 25000

@@ -307,3 +307,20 @@ One entry per decision: date, choice, reason, rejected options.
 - **Reason:** the parts that shape a match (who allies, who betrays, who gets attacked, how hard
   nations are) match upstream; the omitted parts are refinements that need the real maps (P11)
   to tune.
+
+## D41. Maps: styles, rivers, real Earth
+- **Date:** 2026-11-21
+- **Choice:** the generator gets four styles, rivers (downhill walks carved as water), impassable
+  peaks and a biome layer used only for colours. Real-Earth maps are Natural Earth 1:50m land and
+  lakes (public domain) rasterised by our own `earth_import` tool into run-length land masks built
+  into the binary; heights and moisture are our noise (no elevation or climate data), with an
+  Earth-like dry belt so deserts land roughly right. Region names do not seed nation names (the
+  syllable generator stays). The default map keeps its game id, but rivers and peaks change every
+  generated map, so the bots-only conquest test moved from seed 3 to seed 7.
+- **Also:** ship routing now uses a coarse graph of connected water pieces per 8x8 cell (as
+  upstream's abstract graph) instead of "cells with any water": the worst World-map route went from
+  40 ms to 1.5 ms. Idle warships wait 20 ticks after a failed route and try a straight line first;
+  nations keep at most 8 warships, send them after enemy warships, and a nation with over half the
+  land nukes the biggest holdout regardless of relations (ours, to end island stalemates).
+- **Reason:** real places and varied shapes without shipping OpenFront's map files (D20); the
+  router and AI changes keep big and island maps fast and finishable.

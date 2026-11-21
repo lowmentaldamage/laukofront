@@ -214,6 +214,18 @@ and defense posts, launch warships, embargo players they hate, help allies under
 medium up nuke players they hate (MIRVs at a player holding over 40% of the land on hard and
 impossible). Bots attack a neighbouring traitor first.
 
+## Implemented (P11): maps
+
+- **Generated maps** in four styles: `continents` (default), `archipelago` (many islands: boats and
+  warships matter), `pangaea` (one landmass), `lakes`. All get **rivers** (water: cross them by
+  boat), **impassable peaks**, and **biomes** (snow, taiga, forest, steppe, desert, jungle…, colours
+  only).
+- **Real-Earth maps**: World, Europe, Asia, Africa, the Americas, British Isles, from public-domain
+  Natural Earth coastlines. Each suggests its own number of bots and nations (World: 50 + 16).
+- `laukofront --list-maps` lists them with size and land share. See `docs/MAP_GENERATION.md`.
+- Nations now hunt enemy warships with their own, and a nation holding over half the land nukes
+  the biggest holdout, so island maps end.
+
 ## Coming next
 
-- **P11:** better generated maps and real-Earth maps.
+- **P12:** main menu, match setup (map, players, difficulty, modes including teams), settings.

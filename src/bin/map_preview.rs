@@ -1,27 +1,19 @@
 //! Writes a generated map as a BMP image and prints how long generation took.
 //!
-//!     cargo run --release --bin map_preview -- --width 1200 --height 750 --seed 7 --out map.bmp
+//!     cargo run --release --bin map_preview -- --width 1200 --height 750 --seed 7 --style lakes --out map.bmp
+//!     cargo run --release --bin map_preview -- --earth europe --out europe.bmp
 
 use std::process::ExitCode;
 use std::time::Instant;
 
-use laukofront::engine_lib::game_map::{GameMap, TerrainType};
-use laukofront::engine_lib::terrain::{generate, TerrainParams};
+use laukofront::engine_lib::earth::EarthMap;
+use laukofront::engine_lib::game_map::GameMap;
+use laukofront::engine_lib::terrain::{generate, MapStyle, TerrainParams};
+use laukofront::render::palette::terrain_color;
 
 fn color(m: &GameMap, t: u32) -> [u8; 3] {
-    let mag = m.magnitude(t) as u32;
-    match m.terrain_type(t) {
-        TerrainType::Ocean => [28, 52, 84],
-        TerrainType::Lake => [44, 84, 120],
-        TerrainType::Plains => [(96 + mag * 4) as u8, (150 - mag * 2) as u8, 82],
-        TerrainType::Highland => [(150 + mag) as u8, (140 - mag * 2) as u8, 96],
-        TerrainType::Mountain => [
-            (160 + mag * 2) as u8,
-            (160 + mag * 2) as u8,
-            (160 + mag * 2) as u8,
-        ],
-        TerrainType::Impassable => [20, 20, 20],
-    }
+    let [r, g, b, _] = terrain_color(m, t);
+    [r, g, b]
 }
 
 fn write_bmp(path: &str, m: &GameMap) -> std::io::Result<()> {
@@ -51,6 +43,8 @@ fn write_bmp(path: &str, m: &GameMap) -> std::io::Result<()> {
 
 fn run() -> Result<(), String> {
     let (mut w, mut h, mut seed, mut out) = (1200u32, 750u32, 7i64, "map.bmp".to_string());
+    let mut style = MapStyle::Continents;
+    let mut earth: Option<EarthMap> = None;
     let mut it = std::env::args().skip(1);
     while let Some(a) = it.next() {
         let v = it.next().ok_or(format!("{a} needs a value"))?;
@@ -59,11 +53,19 @@ fn run() -> Result<(), String> {
             "--height" => h = v.parse().map_err(|e| format!("--height: {e}"))?,
             "--seed" => seed = v.parse().map_err(|e| format!("--seed: {e}"))?,
             "--out" => out = v,
+            "--earth" => earth = Some(EarthMap::parse(&v).ok_or(format!("unknown map {v}"))?),
+            "--style" => style = MapStyle::parse(&v).ok_or(format!("unknown style {v}"))?,
             other => return Err(format!("unknown argument {other}")),
         }
     }
     let start = Instant::now();
-    let map = generate(&TerrainParams::new(w, h), seed).ok_or("map too small")?;
+    let mut params = TerrainParams::new(w, h);
+    params.style = style;
+    let map = match earth {
+        Some(e) => e.build().ok_or("bad map file")?,
+        None => generate(&params, seed).ok_or("map too small")?,
+    };
+    let (w, h) = (map.width(), map.height());
     let ms = start.elapsed().as_secs_f64() * 1e3;
     println!(
         "{w}x{h} seed {seed}: {:.1} ms, land {:.1}%",

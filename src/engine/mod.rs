@@ -25,4 +25,4 @@ pub mod weapons;
 
 pub use game::{Execution, Game};
 pub use player::{Player, PlayerId, PlayerInfo, PlayerType};
-pub use runner::{new_match, run_turn, Intent, MatchSetup, HUMAN};
+pub use runner::{new_match, run_turn, Intent, MapChoice, MatchSetup, HUMAN};

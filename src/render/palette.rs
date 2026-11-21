@@ -1,11 +1,11 @@
 //! laukofront's own colours (not OpenFront's). Pure functions so they can be tested.
 
 use crate::engine::{PlayerId, HUMAN};
-use crate::engine_lib::game_map::{GameMap, TerrainType, TileRef};
+use crate::engine_lib::game_map::{Biome, GameMap, TerrainType, TileRef};
 
 pub const OCEAN: [u8; 4] = [24, 44, 72, 255];
 pub const LAKE: [u8; 4] = [38, 72, 104, 255];
-pub const IMPASSABLE: [u8; 4] = [14, 16, 20, 255];
+pub const IMPASSABLE: [u8; 4] = [64, 64, 72, 255];
 /// The human's colour.
 pub const HUMAN_COLOR: [u8; 3] = [70, 140, 255];
 /// Irradiated unowned land after a nuke.
@@ -15,23 +15,51 @@ pub const OWN_BORDER: [u8; 4] = [255, 214, 92, 255];
 /// How strongly an owner's colour covers the terrain (0..1).
 pub const OWNER_TINT: f32 = 0.62;
 
-/// Terrain colour of a tile, shaded by magnitude.
+/// Base colour of each biome's lowlands (ours).
+fn biome_base(b: Biome) -> [u32; 3] {
+    match b {
+        Biome::Temperate => [104, 148, 84],
+        Biome::Forest => [66, 118, 64],
+        Biome::Steppe => [150, 156, 92],
+        Biome::Desert => [206, 186, 128],
+        Biome::Jungle => [52, 120, 58],
+        Biome::Taiga => [74, 106, 80],
+        Biome::Tundra => [150, 152, 128],
+        Biome::Snow => [226, 232, 236],
+    }
+}
+
+/// Terrain colour of a tile: its biome, darkening and greying with height.
 pub fn terrain_color(map: &GameMap, t: TileRef) -> [u8; 4] {
     let m = map.magnitude(t) as u32;
     match map.terrain_type(t) {
         TerrainType::Ocean => OCEAN,
         TerrainType::Lake => LAKE,
         TerrainType::Impassable => IMPASSABLE,
-        TerrainType::Plains => [
-            (104 + m * 3) as u8,
-            (148 - m * 2) as u8,
-            (84 + m) as u8,
-            255,
-        ],
-        TerrainType::Highland => [(142 + m) as u8, (128 - m) as u8, (92 + m) as u8, 255],
+        TerrainType::Plains => {
+            let [r, g, b] = biome_base(map.biome(t));
+            [
+                (r + m * 2).min(255) as u8,
+                g.saturating_sub(m).min(255) as u8,
+                (b + m).min(255) as u8,
+                255,
+            ]
+        }
+        TerrainType::Highland => {
+            let [r, g, b] = biome_base(map.biome(t));
+            // Blend toward brown hills.
+            let mix = |a: u32, hill: u32| ((a + hill * 2) / 3 + (m - 10)) as u8;
+            [mix(r, 150), mix(g, 126), mix(b, 92), 255]
+        }
         TerrainType::Mountain => {
+            let snow = matches!(map.biome(t), Biome::Snow | Biome::Tundra | Biome::Taiga);
             let v = (150 + (m - 20) * 6).min(235) as u8;
-            [v, v, v, 255]
+            if snow {
+                let v = v.saturating_add(20);
+                [v, v, v.saturating_add(6), 255]
+            } else {
+                [v, v, v, 255]
+            }
         }
     }
 }

@@ -18,7 +18,7 @@ use laukofront::client::{ClientPlugin, ClientSettings, CurrentSetup, GameState, 
 use laukofront::config::{Difficulty, GameConfig, MapSize, GAME_CONFIG_PATH};
 use laukofront::engine::units::UnitKind;
 use laukofront::engine::util::spawn_tiles;
-use laukofront::engine::{new_match, Intent, MatchSetup, HUMAN};
+use laukofront::engine::{new_match, Intent, MapChoice, MatchSetup, HUMAN};
 use laukofront::engine_lib::random::PseudoRandom;
 use laukofront::input::{click_action, click_action_with, ClickAction, InputPlugin};
 use laukofront::render::perf::{record_frames, take_screenshot, PerfRun, ScreenshotRun};
@@ -31,6 +31,30 @@ struct Options {
     perf_run: Option<f32>,
     screenshot: Option<String>,
     screenshot_at: f32,
+}
+
+/// Prints every map with its size, land share and suggested players (`--list-maps`).
+fn list_maps() {
+    println!("Generated (any --size, a new map every --seed):");
+    for s in laukofront::engine_lib::terrain::MapStyle::ALL {
+        println!("  {:<14} --size small|medium|large", s.name());
+    }
+    println!("Real Earth (Natural Earth coastlines, public domain):");
+    for e in laukofront::engine_lib::earth::EarthMap::ALL {
+        let r = e.region();
+        let land = e.build().map_or(0.0, |m| {
+            100.0 * m.num_land_tiles() as f64 / m.num_tiles() as f64
+        });
+        let (b, n) = e.suggested_players();
+        println!(
+            "  {:<14} {:<13} {}x{} tiles, {:.0}% land, suggested {b} bots + {n} nations",
+            e.id(),
+            e.title(),
+            r.width,
+            r.height,
+            land
+        );
+    }
 }
 
 fn parse_args() -> Result<Options, String> {
@@ -46,11 +70,16 @@ fn parse_args() -> Result<Options, String> {
         screenshot_at: 6.0,
     };
     let mut nations: Option<u32> = None;
+    let mut bots: Option<u32> = None;
     let mut it = std::env::args().skip(1);
     while let Some(a) = it.next() {
         if a == "--autoplay" {
             o.autoplay = true;
             continue;
+        }
+        if a == "--list-maps" {
+            list_maps();
+            std::process::exit(0);
         }
         let v = it.next().ok_or(format!("{a} needs a value"))?;
         match a.as_str() {
@@ -62,7 +91,13 @@ fn parse_args() -> Result<Options, String> {
                     other => return Err(format!("unknown map size {other} (small|medium|large)")),
                 }
             }
-            "--bots" => o.setup.bots = v.parse().map_err(|e| format!("--bots: {e}"))?,
+            "--bots" => bots = Some(v.parse().map_err(|e| format!("--bots: {e}"))?),
+            "--map" => {
+                o.setup.map = MapChoice::parse(&v).ok_or_else(|| {
+                    let names: Vec<&str> = MapChoice::all().iter().map(|m| m.name()).collect();
+                    format!("unknown map {v} ({})", names.join("|"))
+                })?
+            }
             "--seed" => o.setup.seed = v.parse().map_err(|e| format!("--seed: {e}"))?,
             "--nations" => nations = Some(v.parse().map_err(|e| format!("--nations: {e}"))?),
             "--difficulty" => {
@@ -78,7 +113,13 @@ fn parse_args() -> Result<Options, String> {
             other => return Err(format!("unknown argument {other}")),
         }
     }
-    o.setup.nations = nations.unwrap_or(MatchSetup::default_nations(o.setup.size));
+    // Real-Earth maps suggest their own player counts.
+    let (def_bots, def_nations) = match o.setup.map {
+        MapChoice::Earth(e) => e.suggested_players(),
+        MapChoice::Generated(_) => (20, MatchSetup::default_nations(o.setup.size)),
+    };
+    o.setup.bots = bots.unwrap_or(def_bots);
+    o.setup.nations = nations.unwrap_or(def_nations);
     Ok(o)
 }
 
@@ -145,7 +186,10 @@ fn autoplay(
         }
     }
     // After a minute, keep the diplomacy menu open on the biggest other player (for screenshots).
-    if g.ticks() >= 600 && settings.player_menu.is_none() {
+    if g.ticks() >= 600
+        && settings.player_menu.is_none()
+        && g.player(HUMAN).is_some_and(|p| p.is_alive())
+    {
         settings.player_menu = g
             .alive_players()
             .filter(|p| p.id() != HUMAN)
@@ -237,8 +281,13 @@ fn run() -> Result<(), String> {
     let tick_hz = config.game.tick_hz;
     let game = new_match(config, o.setup)?;
     println!(
-        "laukofront: {:?} map, {} bots, seed {} (\u{a9} OpenFront and Contributors; not affiliated)",
-        o.setup.size, o.setup.bots, o.setup.seed
+        "laukofront: {} map ({:?}), {} bots, {} nations ({}), seed {} (\u{a9} OpenFront and Contributors; not affiliated)",
+        o.setup.map.name(),
+        o.setup.size,
+        o.setup.bots,
+        o.setup.nations,
+        o.setup.difficulty.name(),
+        o.setup.seed
     );
 
     let automated = o.perf_run.is_some() || o.screenshot.is_some();

@@ -4,19 +4,69 @@
 //! 2. Elevation fades to zero near the map edge, so continents never touch it.
 //! 3. Sea level is chosen from a histogram so about `land_fraction` of tiles are land.
 //! 4. Land elevation above sea level becomes magnitude 0-30 (`detmath::pow` curve).
-//! 5. Land specks smaller than `min_island_tiles` sink; lakes smaller than `min_lake_tiles` fill.
-//! 6. Water connected to the map edge is ocean; tiles next to the other kind are shoreline.
+//! 5. The map style shapes it: one big continent (pangaea), many islands (archipelago), lakes.
+//! 6. Rivers run downhill from the highlands into the sea; the highest peaks become impassable.
+//! 7. Land specks smaller than `min_island_tiles` sink; lakes smaller than `min_lake_tiles` fill.
+//! 8. Water connected to the map edge is ocean; tiles next to the other kind are shoreline.
+//! 9. Biomes (colours only) from latitude, height and a moisture noise.
 //!
 //! Only integer hashing, `+ - * /` and `detmath` are used, so a seed gives the same map everywhere.
 
 use std::collections::VecDeque;
 
 use super::detmath;
-use super::game_map::{terrain_byte, GameMap};
+use super::game_map::{terrain_byte, Biome, GameMap, IMPASSABLE_MAGNITUDE};
 use super::random::PseudoRandom;
 
 /// How far elevation drops at the very edge (noise is 0..1, so this sinks the rim).
 const EDGE_DROP: f64 = 0.45;
+
+/// The overall shape of a generated map.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
+pub enum MapStyle {
+    /// A few large continents (the default).
+    #[default]
+    Continents,
+    /// Many islands and narrow seas: boats matter.
+    Archipelago,
+    /// One big landmass.
+    Pangaea,
+    /// Mostly land, full of lakes.
+    Lakes,
+}
+
+impl MapStyle {
+    pub const ALL: [MapStyle; 4] = [
+        MapStyle::Continents,
+        MapStyle::Archipelago,
+        MapStyle::Pangaea,
+        MapStyle::Lakes,
+    ];
+
+    pub fn name(self) -> &'static str {
+        match self {
+            MapStyle::Continents => "continents",
+            MapStyle::Archipelago => "archipelago",
+            MapStyle::Pangaea => "pangaea",
+            MapStyle::Lakes => "lakes",
+        }
+    }
+
+    pub fn parse(s: &str) -> Option<Self> {
+        let s = s.to_ascii_lowercase();
+        Self::ALL.into_iter().find(|m| m.name() == s)
+    }
+
+    /// Rivers per 400 000 tiles.
+    fn rivers(self) -> u32 {
+        match self {
+            MapStyle::Continents => 6,
+            MapStyle::Archipelago => 2,
+            MapStyle::Pangaea => 9,
+            MapStyle::Lakes => 4,
+        }
+    }
+}
 
 /// Generator settings. Defaults are laukofront's tuned values (`[ours]` in PLAN.md).
 #[derive(Debug, Clone, PartialEq)]
@@ -35,6 +85,9 @@ pub struct TerrainParams {
     pub mountain_exponent: f64,
     pub min_island_tiles: u32,
     pub min_lake_tiles: u32,
+    pub style: MapStyle,
+    /// Share of land at the very top that becomes impassable peaks.
+    pub peak_share: f64,
 }
 
 impl TerrainParams {
@@ -49,12 +102,38 @@ impl TerrainParams {
             mountain_exponent: 1.6,
             min_island_tiles: 60,
             min_lake_tiles: 40,
+            style: MapStyle::Continents,
+            peak_share: 0.006,
         }
+    }
+
+    /// These settings adjusted for `style`.
+    fn styled(&self) -> Self {
+        let mut p = self.clone();
+        match self.style {
+            MapStyle::Continents => {}
+            MapStyle::Archipelago => {
+                p.land_fraction = self.land_fraction * 0.7;
+                p.base_cells = self.base_cells * 3.0;
+                p.min_island_tiles = self.min_island_tiles / 2;
+            }
+            MapStyle::Pangaea => {
+                p.land_fraction = self.land_fraction * 0.9;
+                p.base_cells = self.base_cells * 0.6;
+                p.edge_fade = (self.edge_fade * 1.4).min(0.9);
+            }
+            MapStyle::Lakes => {
+                p.land_fraction = (self.land_fraction * 1.3).min(0.8);
+                p.min_lake_tiles = (self.min_lake_tiles / 3).max(8);
+            }
+        }
+        p
     }
 }
 
 /// Generates a map. Returns `None` for an empty size.
-pub fn generate(p: &TerrainParams, seed: i64) -> Option<GameMap> {
+pub fn generate(params: &TerrainParams, seed: i64) -> Option<GameMap> {
+    let p = params.styled();
     let (w, h) = (p.width as usize, p.height as usize);
     if w < 3 || h < 3 {
         return None;
@@ -116,17 +195,70 @@ pub fn generate(p: &TerrainParams, seed: i64) -> Option<GameMap> {
         }
     }
 
-    // 5. Remove small islands, fill small lakes.
-    remove_small_components(&mut land, w, h, true, p.min_island_tiles, |_| {});
-    remove_small_components(&mut land, w, h, false, p.min_lake_tiles, |i| mag[i] = 2);
+    // 5. Style.
+    match p.style {
+        MapStyle::Pangaea => keep_largest_land(&mut land, w, h),
+        MapStyle::Lakes => {
+            // A second, finer noise field punches lakes into the land.
+            let lake_salts = [
+                (rng.next() * 4_294_967_296.0) as u32,
+                (rng.next() * 4_294_967_296.0) as u32,
+            ];
+            let ls = scale / 4.0;
+            for y in 0..h {
+                for x in 0..w {
+                    let i = y * w + x;
+                    if land[i]
+                        && mag[i] < 14
+                        && fbm(x as f64 / ls, y as f64 / ls, &lake_salts) > 0.68
+                    {
+                        land[i] = false;
+                    }
+                }
+            }
+        }
+        _ => {}
+    }
+
+    // 6. Rivers, then peaks.
+    let area = (w * h) as u64;
+    let rivers = (p.style.rivers() as u64 * area / 400_000).max(1) as usize;
+    carve_rivers(&mut land, &elev, w, h, rivers, &mut rng);
+    mark_peaks(&land, &elev, &mut mag, p.peak_share);
+
+    // 7-8.
+    let terrain = finalize(
+        &mut land,
+        &mut mag,
+        w,
+        h,
+        p.min_island_tiles,
+        p.min_lake_tiles,
+    );
+    let mut map = GameMap::new(p.width, p.height, terrain)?;
+    // Generated maps are drawn as if they spanned 70 N to 70 S.
+    assign_biomes(&mut map, 70.0, -70.0, seed);
+    Some(map)
+}
+
+/// Steps 7-8, shared with the real-Earth maps: sinks small islands, fills small lakes, and packs
+/// the terrain bytes (land, shoreline, ocean, magnitude).
+pub fn finalize(
+    land: &mut [bool],
+    mag: &mut [u8],
+    w: usize,
+    h: usize,
+    min_island: u32,
+    min_lake: u32,
+) -> Vec<u8> {
+    remove_small_components(land, w, h, true, min_island, |_| {});
+    remove_small_components(land, w, h, false, min_lake, |i| mag[i] = 2);
     for (i, l) in land.iter().enumerate() {
         if !l {
             mag[i] = 0;
         }
     }
-
-    // 6. Ocean = water connected to the edge; shoreline = touches the other kind.
-    let ocean = edge_connected_water(&land, w, h);
+    let ocean = edge_connected_water(land, w, h);
     let mut terrain = vec![0u8; w * h];
     for y in 0..h {
         for x in 0..w {
@@ -138,7 +270,207 @@ pub fn generate(p: &TerrainParams, seed: i64) -> Option<GameMap> {
             terrain[i] = terrain_byte(land[i], shore, ocean[i], mag[i]);
         }
     }
-    GameMap::new(p.width, p.height, terrain)
+    terrain
+}
+
+/// Magnitudes 0-30 for land from our noise (used by the real-Earth maps, whose source has no
+/// height): mostly plains, highlands and mountain ranges where the noise peaks.
+pub fn noise_magnitudes(w: usize, h: usize, seed: i64, cells: f64) -> Vec<u8> {
+    let mut rng = PseudoRandom::new(seed);
+    let salts: Vec<u32> = (0..6)
+        .map(|_| (rng.next() * 4_294_967_296.0) as u32)
+        .collect();
+    let scale = w.min(h) as f64 / cells.max(0.5);
+    let mut out = vec![0u8; w * h];
+    for y in 0..h {
+        for x in 0..w {
+            let e = fbm(x as f64 / scale, y as f64 / scale, &salts);
+            // Ridges: values far from the middle become high ground.
+            let r = ((e - 0.5).abs() * 2.0).clamp(0.0, 1.0);
+            out[y * w + x] = ((detmath::pow(r, 1.8) * 31.0) as u8).min(30);
+        }
+    }
+    out
+}
+
+/// Keeps only the biggest landmass.
+fn keep_largest_land(land: &mut [bool], w: usize, h: usize) {
+    let mut comp_id = vec![u32::MAX; land.len()];
+    let mut sizes: Vec<u32> = Vec::new();
+    let mut queue = VecDeque::new();
+    for start in 0..land.len() {
+        if !land[start] || comp_id[start] != u32::MAX {
+            continue;
+        }
+        let id = sizes.len() as u32;
+        let mut n = 0;
+        comp_id[start] = id;
+        queue.push_back(start);
+        while let Some(i) = queue.pop_front() {
+            n += 1;
+            for nb in neighbors(i, w, h).into_iter().flatten() {
+                if land[nb] && comp_id[nb] == u32::MAX {
+                    comp_id[nb] = id;
+                    queue.push_back(nb);
+                }
+            }
+        }
+        sizes.push(n);
+    }
+    let Some(best) = (0..sizes.len()).max_by_key(|&i| (sizes[i], std::cmp::Reverse(i))) else {
+        return;
+    };
+    for (i, l) in land.iter_mut().enumerate() {
+        if *l && comp_id[i] != best as u32 {
+            *l = false;
+        }
+    }
+}
+
+/// Rivers: from random high land, walk to the lowest unvisited neighbour until reaching water;
+/// a walk that gets stuck or runs too long is dropped. Carved tiles become water.
+fn carve_rivers(
+    land: &mut [bool],
+    elev: &[f64],
+    w: usize,
+    h: usize,
+    count: usize,
+    rng: &mut PseudoRandom,
+) {
+    let high: Vec<usize> = (0..land.len()).filter(|&i| land[i]).collect();
+    if high.is_empty() {
+        return;
+    }
+    // Sources: the highest of a few random land tiles, so rivers start in the hills.
+    let max_len = (w + h) / 2;
+    let mut made = 0;
+    let mut tries = 0;
+    let mut visited = vec![false; land.len()];
+    while made < count && tries < count * 20 {
+        tries += 1;
+        let mut src = high[rng.next_int(0, high.len() as i64) as usize];
+        for _ in 0..8 {
+            let c = high[rng.next_int(0, high.len() as i64) as usize];
+            if elev[c] > elev[src] {
+                src = c;
+            }
+        }
+        let mut path = vec![src];
+        let mut cur = src;
+        let mut reached = false;
+        visited[src] = true;
+        while path.len() < max_len {
+            let next = neighbors(cur, w, h)
+                .into_iter()
+                .flatten()
+                .filter(|&n| !visited[n])
+                .min_by(|&a, &b| elev[a].total_cmp(&elev[b]));
+            let Some(n) = next else { break };
+            if !land[n] {
+                reached = true;
+                break;
+            }
+            visited[n] = true;
+            path.push(n);
+            cur = n;
+        }
+        for &i in &path {
+            visited[i] = false;
+        }
+        // Short rivers are just notches in the coast; skip them.
+        if reached && path.len() >= 25 {
+            for &i in &path {
+                land[i] = false;
+            }
+            made += 1;
+        }
+    }
+}
+
+/// The highest `share` of land becomes impassable.
+fn mark_peaks(land: &[bool], elev: &[f64], mag: &mut [u8], share: f64) {
+    if share <= 0.0 {
+        return;
+    }
+    let mut heights: Vec<f64> = (0..land.len())
+        .filter(|&i| land[i])
+        .map(|i| elev[i])
+        .collect();
+    if heights.is_empty() {
+        return;
+    }
+    let k = ((heights.len() as f64 * share) as usize).min(heights.len() - 1);
+    let idx = heights.len() - 1 - k;
+    heights.select_nth_unstable_by(idx, |a, b| a.total_cmp(b));
+    let cut = heights[idx];
+    for i in 0..land.len() {
+        if land[i] && elev[i] > cut {
+            mag[i] = IMPASSABLE_MAGNITUDE;
+        }
+    }
+}
+
+/// Biomes from latitude (`lat_top` at row 0 to `lat_bottom` at the last row), height and a
+/// moisture noise. Visual only.
+pub fn assign_biomes(map: &mut GameMap, lat_top: f64, lat_bottom: f64, seed: i64) {
+    let (w, h) = (map.width() as usize, map.height() as usize);
+    let mut rng = PseudoRandom::new(seed ^ 0x5eed_b10e);
+    let salts: Vec<u32> = (0..3)
+        .map(|_| (rng.next() * 4_294_967_296.0) as u32)
+        .collect();
+    let jitter_salts: Vec<u32> = (0..3)
+        .map(|_| (rng.next() * 4_294_967_296.0) as u32)
+        .collect();
+    let scale = w.min(h) as f64 / 6.0;
+    let jscale = w.min(h) as f64 / 10.0;
+    // Degrees per row, so the jitter is the same in degrees on every map.
+    let span = (lat_top - lat_bottom).abs().max(1.0);
+    let mut out = vec![Biome::Temperate as u8; w * h];
+    for y in 0..h {
+        let row_lat = lat_top + (lat_bottom - lat_top) * (y as f64 + 0.5) / h as f64;
+        for x in 0..w {
+            let t = (y * w + x) as u32;
+            if !map.is_land(t) {
+                continue;
+            }
+            // Wavy climate lines instead of straight bands (up to +-9 degrees).
+            let j = (fbm(x as f64 / jscale, y as f64 / jscale, &jitter_salts) - 0.5)
+                * 18.0
+                * span.min(40.0)
+                / 40.0;
+            let lat = (row_lat + j).abs();
+            // Earth-like climate: a dry belt around 25 degrees, wet tropics near the equator.
+            let dry = (1.0 - ((lat - 25.0) / 9.0) * ((lat - 25.0) / 9.0)).max(0.0);
+            let tropic = (1.0 - lat / 10.0).max(0.0);
+            let wet = fbm(x as f64 / scale, y as f64 / scale, &salts) - 0.2 * dry + 0.15 * tropic;
+            let m = map.magnitude(t);
+            let b = if lat > 66.0 || (lat > 58.0 && m >= 20) {
+                if lat > 75.0 || m >= 20 {
+                    Biome::Snow
+                } else {
+                    Biome::Tundra
+                }
+            } else if lat > 50.0 {
+                Biome::Taiga
+            } else if lat > 30.0 {
+                if wet < 0.42 {
+                    Biome::Steppe
+                } else if wet > 0.58 {
+                    Biome::Forest
+                } else {
+                    Biome::Temperate
+                }
+            } else if wet < 0.40 && m < 12 {
+                Biome::Desert
+            } else if wet > 0.52 {
+                Biome::Jungle
+            } else {
+                Biome::Steppe
+            };
+            out[t as usize] = b as u8;
+        }
+    }
+    map.set_biomes(out);
 }
 
 #[inline]

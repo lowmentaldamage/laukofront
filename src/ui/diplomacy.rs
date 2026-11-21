@@ -7,7 +7,7 @@ use bevy::ui_widgets::{observe, Activate, Button};
 use bevy::window::PrimaryWindow;
 
 use super::{fmt_num, font, ACCENT, DANGER, GOOD, PANEL, PANEL_BORDER, TEXT, TEXT_DIM};
-use crate::client::{ClientSettings, GameState, Notices, PendingIntents};
+use crate::client::{ClientSettings, GameState, MatchStats, Notices, PendingIntents};
 use crate::engine::diplomacy::REACTIONS;
 use crate::engine::player::Relation;
 use crate::engine::{Game, Intent, PlayerId, HUMAN};
@@ -363,7 +363,7 @@ pub fn menu_info(g: &Game, other: PlayerId) -> String {
     lines.join("\n")
 }
 
-#[allow(clippy::type_complexity)]
+#[allow(clippy::type_complexity, clippy::too_many_arguments)]
 fn update_menu(
     game: Res<GameState>,
     mut settings: ResMut<ClientSettings>,
@@ -372,11 +372,13 @@ fn update_menu(
     mut title: Query<&mut Text, (With<MenuTitle>, Without<MenuInfo>)>,
     mut info: Query<&mut Text, (With<MenuInfo>, Without<MenuTitle>)>,
     mut buttons: Query<(&MenuAction, &mut Node), Without<PlayerMenu>>,
+    stats: Res<MatchStats>,
 ) {
     let g = &game.0;
+    // Close when the player is gone or the match is over for you (the end screen shows).
     if settings
         .player_menu
-        .is_some_and(|o| !g.player(o).is_some_and(|p| p.is_alive()))
+        .is_some_and(|o| stats.ended || !g.player(o).is_some_and(|p| p.is_alive()))
     {
         settings.player_menu = None;
     }
