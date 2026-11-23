@@ -462,6 +462,11 @@ fn run() -> Result<(), String> {
         app.insert_resource(bevy::winit::WinitSettings::continuous());
     }
     if let Some(seconds) = o.perf_run {
+        // Measure without the frame cap whatever the saved VSync setting says (not saved back).
+        app.insert_resource(laukofront::client::SavedSettings {
+            vsync: false,
+            ..laukofront::client::SavedSettings::load()
+        });
         app.insert_resource(PerfRun::new(seconds))
             .add_systems(Update, record_frames);
     }

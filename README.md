@@ -7,13 +7,14 @@ laukofront is a Rust port of the **OpenFront** engine (<https://github.com/openf
 **© OpenFront and Contributors.** laukofront is not affiliated with or endorsed by OpenFront.
 See `NOTICE.md`.
 
-**Status:** playable against bots (port milestones P0–P5). Boats, menus and polish are next.
-See `PROJECT_STATUS.md`. See `PROJECT_STATUS.md`.
+**Status:** version 1.0.0, a complete single-player game: menus, AI nations and bots, diplomacy,
+teams, boats, buildings, warships, nukes, generated and real-Earth maps, saves and sound. See
+`PROJECT_STATUS.md`.
 
 ## Quick start (Windows, PowerShell)
 
 ```powershell
-cargo run --release                       # play: Medium map, 20 bots
+cargo run --release                       # main menu
 cargo run --release -- --size large --bots 50 --seed 7
 cargo run --release -- --nations 8 --difficulty hard
 cargo run --release -- --map world          # or europe, asia, archipelago… (--list-maps)
@@ -21,8 +22,10 @@ cargo run --release -- --autoplay         # watch it play itself
 cargo test
 ```
 
-Click unclaimed land to spawn, then click land next to your border to attack. Keys 1-9 set the
-attack size, R retreats, Space pauses, F1-F3 change speed. Full list: `docs/CONTROLS.md`.
+Play -> pick a map -> Start. Click unclaimed land to spawn, then click land next to your border
+to attack. Keys 1-9 set the attack size, Esc opens the pause menu (save, load, settings). Full
+list: `docs/CONTROLS.md`. A ready-to-run Windows zip: `scripts\package.ps1` (see
+`docs/RELEASE.md`).
 
 Full setup from a clean PC: `docs/BUILDING.md`. Smart App Control must be off to build.
 

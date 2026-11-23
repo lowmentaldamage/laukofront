@@ -1,7 +1,7 @@
 # Project status
 
 **Date:** 2026-11-23
-**State:** complete single-player game: menus, bots and AI nations, diplomacy, teams, boats, buildings, warships, nukes, generated and real-Earth maps, saves and sound (port milestones P0–P13). Next: release (P14).
+**State:** **v1.0.0 released** — complete single-player game (port milestones P0–P14). See `docs/QA.md`.
 
 ## Done
 
@@ -18,8 +18,7 @@
 
 ## Not done
 
-- P14 release.
-- Later plan: online multiplayer, accounts, ranked play, clans.
+- Nothing planned for 1.0.0. Later plan (not started): online multiplayer, accounts, ranked play, clans.
 
 ## Known issues
 

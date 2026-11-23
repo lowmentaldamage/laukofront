@@ -17,37 +17,23 @@ Both must pass. Update the version in `Cargo.toml` and `CHANGELOG.md` first.
 cargo build --release
 ```
 
-## 3. Assemble
+## 3. Package
 
 ```powershell
-$version = (Select-String -Path Cargo.toml -Pattern '^version = "(.+)"').Matches[0].Groups[1].Value
-$out = "dist\laukofront-v$version"
-Remove-Item -Recurse -Force $out -ErrorAction SilentlyContinue
-New-Item -ItemType Directory -Force $out | Out-Null
-Copy-Item target\release\laukofront.exe $out
-Copy-Item -Recurse assets $out\assets
-Copy-Item LICENSE $out
-Copy-Item NOTICE.md $out
-Copy-Item docs\CREDITS.md $out
-# a short player README (how to run, controls, Smart App Control note)
-Copy-Item dist-README.txt $out\README.txt
+powershell -ExecutionPolicy Bypass -File scripts\package.ps1
 ```
 
-Do **not** copy `target\`, `reference\`, `docs\` (except CREDITS), `src\` or `.git\`.
+This builds the release exe and writes `dist\laukofront-<version>-windows.zip` with the exe,
+`assets\config\game.toml` (maps are built into the exe), `LICENSE`, `NOTICE.md`, `CREDITS.md`,
+`CONTROLS.md`, `README.txt` (from `dist-README.txt`) and `laukofront-source.zip` (the committed
+source at HEAD, as the AGPL requires). Commit first, so the source zip matches the exe.
 
 ## 4. Test the packaged copy
 
-1. Copy the folder somewhere outside the project, e.g. `C:\Temp\oc-test\`.
-2. Run `laukofront.exe` there by double-clicking it (not `cargo run`).
-3. Play to the first capture, quit, check no error dialogs.
+1. Unzip it somewhere outside the project.
+2. Run `laukofront.exe` there (double-click). The main menu opens; start a match and play a bit.
 
-## 5. Zip
-
-```powershell
-Compress-Archive -Path $out -DestinationPath "dist\laukofront-v$version.zip" -Force
-```
-
-## 6. Tag
+## 5. Tag
 
 ```powershell
 git tag "v$version"
@@ -56,6 +42,4 @@ git tag "v$version"
 ## Known limitation: unsigned exe
 
 The exe is not code-signed. PCs with Windows Smart App Control on may block it, and SmartScreen
-may warn on first run ("More info → Run anyway"). Code signing is out of scope for this project.
-
-`dist-README.txt` is written in Stage 17.
+may warn on first run ("More info -> Run anyway"). Code signing is out of scope for this project.

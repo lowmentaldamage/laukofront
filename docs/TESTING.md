@@ -262,3 +262,10 @@ Bots + nations in 2-4 teams (seeds 1-2): all six matches end with a team winner.
 
 Manual check: main menu and setup screen screenshots (HUD hidden behind the menus); team match
 runs (579 FPS). One 82 ms frame at 2 s into a run, when the first sound opens the audio device.
+
+### 2026-11-23 — Release v1.0.0 (P14)
+
+Full checklist with results: `docs/QA.md`. 153 tests pass; `--menu-script` presses the real menu
+buttons (Play, Start, pause, Save game, Main menu, Continue saved game) and every step does what
+it should; the packaged zip runs from an outside folder. Found and fixed: the saved VSync setting
+capped the frame-time measurement at the monitor's 165 Hz.

@@ -29,7 +29,7 @@ Milestones in order. Stage numbers refer to the build guide.
 | P11 Maps | **done** — styles, rivers, peaks, biomes; World, Europe, Asia, Africa, Americas, British Isles |
 | P12 Menus and modes | **done** — main menu, setup, pause, settings, teams (no Doomsday Clock, no presets, D44) |
 | P13 Save, audio, polish | **done** — replay saves (D43), generated sound effects (D44), end-screen stats |
-| P14 Performance and release | border-tile encirclement, mid-range PC, zip, v1.0.0 |
+| P14 Performance and release | **done** — v1.0.0: QA checklist, Windows zip with source, tag |
 
 ## Future
 

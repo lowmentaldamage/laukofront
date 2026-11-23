@@ -226,3 +226,12 @@ nations): World 18 041 ticks in 3.0 s (0.17 ms per tick).
 
 About 0.3 ms more per frame than line icons (sprites for every building and ship, updated each
 frame).
+
+### 2026-11-23 — v1.0.0
+
+| Map | Players | Avg | FPS | p99 | Max | Frames > 33 ms |
+|---|---|---|---|---|---|---|
+| large generated | 50 bots + 10 nations | 2.51 ms | 399 | 6.08 ms | 8.66 ms | 0 |
+| World | 50 + 16 | 2.42 ms | 413 | 5.04 ms | 9.56 ms | 0 |
+
+Border-tile encirclement (D25) stays simplified: with ticks at 0.2-0.4 ms there is no need.

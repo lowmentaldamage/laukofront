@@ -2,6 +2,12 @@
 
 Versions follow the build guide milestones. `1.0.0` is the finished game.
 
+## 1.0.0 — 2026-11-23
+
+The finished single-player game (port milestones P0-P14, listed below in order). Release:
+Windows zip with the source, no console window, rules file found next to the exe, QA checklist
+(`docs/QA.md`).
+
 ## 0.1.0 — 2026-11-20 (unreleased)
 
 - Stages 0–3: repository, environment record, folder layout, Bevy 0.20.1 project.
