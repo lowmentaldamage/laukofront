@@ -390,7 +390,8 @@ fn run() -> Result<(), String> {
     let config = if path.exists() {
         GameConfig::load(&path).map_err(|e| e.to_string())?
     } else {
-        GameConfig::from_toml_str(BUILT_IN_RULES, "built-in game.toml").map_err(|e| e.to_string())?
+        GameConfig::from_toml_str(BUILT_IN_RULES, "built-in game.toml")
+            .map_err(|e| e.to_string())?
     };
     let tick_hz = config.game.tick_hz;
     let game = new_match(config, o.setup)?;
