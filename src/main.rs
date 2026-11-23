@@ -1,12 +1,18 @@
 //! laukofront entry point.
 //!
-//!     laukofront [--size small|medium|large] [--bots N] [--seed N]
-//!                [--autoplay] [--perf-run SECONDS] [--screenshot PATH] [--screenshot-at SECONDS]
+//! Without options the main menu opens. Options start a match directly (see docs/CONTROLS.md):
 //!
-//! Until the menu exists (Stage 12) the match comes from these options: Medium map, 20 bots,
-//! random seed. `--autoplay` spawns and attacks for you (for demos, screenshots and perf runs).
-//! `--perf-run` opens a 1920x1080 window without vsync, records frame times, prints a summary
-//! and exits. `--screenshot` saves a PNG after `--screenshot-at` seconds (default 6) and exits.
+//!     laukofront [--map NAME] [--size small|medium|large] [--bots N] [--nations N]
+//!                [--difficulty D] [--teams N] [--seed N] [--list-maps]
+//!                [--autoplay] [--perf-run SECONDS] [--screenshot PATH] [--screenshot-at SECONDS]
+//!                [--open SCREEN] [--menu-script DIR]
+//!
+//! `--autoplay` spawns and attacks for you (demos, screenshots, perf runs). `--perf-run` opens a
+//! 1920x1080 window without vsync, records frame times, prints a summary and exits.
+//! `--screenshot` saves a PNG after `--screenshot-at` seconds (default 6) and exits.
+
+// Release builds open no console window (output still reaches a terminal that redirects it).
+#![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 use std::process::ExitCode;
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -37,6 +43,8 @@ struct Options {
     menu: bool,
     /// Open this screen at start (for documentation screenshots).
     open_screen: Option<Screen>,
+    /// Press the menu buttons in order and save screenshots into this folder (`--menu-script`).
+    menu_script: Option<String>,
 }
 
 /// Prints every map with its size, land share and suggested players (`--list-maps`).
@@ -76,6 +84,7 @@ fn parse_args() -> Result<Options, String> {
         screenshot_at: 6.0,
         menu: std::env::args().len() <= 1,
         open_screen: None,
+        menu_script: None,
     };
     let mut nations: Option<u32> = None;
     let mut bots: Option<u32> = None;
@@ -121,6 +130,10 @@ fn parse_args() -> Result<Options, String> {
             }
             "--perf-run" => o.perf_run = Some(v.parse().map_err(|e| format!("--perf-run: {e}"))?),
             "--screenshot" => o.screenshot = Some(v),
+            "--menu-script" => {
+                o.menu_script = Some(v);
+                o.menu = true;
+            }
             "--open" => {
                 o.open_screen = Some(match v.as_str() {
                     "menu" => Screen::MainMenu,
@@ -145,6 +158,76 @@ fn parse_args() -> Result<Options, String> {
     o.setup.bots = bots.unwrap_or(def_bots);
     o.setup.nations = nations.unwrap_or(def_nations);
     Ok(o)
+}
+
+/// `--menu-script`: presses the real menu buttons (by label) one after another, saving a
+/// screenshot before each press, and prints what happened. An end-to-end check of the menus.
+#[derive(Resource)]
+struct MenuScript {
+    dir: String,
+    step: usize,
+    elapsed: f32,
+}
+
+#[allow(clippy::too_many_arguments)]
+fn menu_script(
+    mut commands: Commands,
+    mut script: ResMut<MenuScript>,
+    time: Res<Time<Real>>,
+    buttons: Query<(Entity, &Children), With<bevy::ui_widgets::Button>>,
+    texts: Query<&Text>,
+    mut screen: ResMut<Screen>,
+    game: Res<GameState>,
+    notices: Res<laukofront::client::Notices>,
+    mut exit: MessageWriter<AppExit>,
+) {
+    use bevy::render::view::screenshot::{save_to_disk, Screenshot};
+    // (seconds, screenshot name, button to press, or "!pause" to press Esc, "!quit").
+    const STEPS: [(f32, &str, &str); 8] = [
+        (3.0, "01_main_menu", "Play"),
+        (4.5, "02_setup", "Start"),
+        (9.0, "03_playing", "!pause"),
+        (10.0, "04_pause", "Save game"),
+        (11.0, "05_after_save", "!pause"),
+        (12.0, "06_pause_again", "Main menu"),
+        (13.5, "07_main_menu_with_save", "Continue saved game"),
+        (17.0, "08_loaded", "!quit"),
+    ];
+    script.elapsed += time.delta_secs();
+    let Some(&(at, name, press)) = STEPS.get(script.step) else {
+        return;
+    };
+    if script.elapsed < at {
+        return;
+    }
+    script.step += 1;
+    commands
+        .spawn(Screenshot::primary_window())
+        .observe(save_to_disk(format!("{}/{name}.png", script.dir)));
+    let last = notices.0.last().map_or("", |n| n.text.as_str());
+    println!(
+        "menu-script {name}: screen {:?}, tick {}, map {}x{}, last notice {last:?}",
+        *screen,
+        game.0.ticks(),
+        game.0.map().width(),
+        game.0.map().height()
+    );
+    match press {
+        "!pause" => *screen = Screen::Paused,
+        "!quit" => {
+            exit.write(AppExit::Success);
+        }
+        label => {
+            let found = buttons.iter().find(|(_, kids)| {
+                kids.iter()
+                    .any(|k| texts.get(k).is_ok_and(|t| t.0 == label))
+            });
+            match found {
+                Some((e, _)) => commands.trigger(bevy::ui_widgets::Activate { entity: e }),
+                None => println!("menu-script: no button {label:?}"),
+            }
+        }
+    }
 }
 
 /// Plays for the human: spawns on a free spot, then every 2 s attacks a random neighbour with 30%
@@ -301,7 +384,7 @@ fn autoplay(
 
 fn run() -> Result<(), String> {
     let o = parse_args()?;
-    let config = GameConfig::load(GAME_CONFIG_PATH).map_err(|e| e.to_string())?;
+    let config = GameConfig::load(config_path()).map_err(|e| e.to_string())?;
     let tick_hz = config.game.tick_hz;
     let game = new_match(config, o.setup)?;
     println!(
@@ -314,7 +397,7 @@ fn run() -> Result<(), String> {
         o.setup.seed
     );
 
-    let automated = o.perf_run.is_some() || o.screenshot.is_some();
+    let automated = o.perf_run.is_some() || o.screenshot.is_some() || o.menu_script.is_some();
     let (resolution, present_mode) = match o.perf_run {
         Some(_) => (WindowResolution::new(1920, 1080), PresentMode::AutoNoVsync),
         None => (WindowResolution::new(1440, 900), PresentMode::AutoVsync),
@@ -351,6 +434,15 @@ fn run() -> Result<(), String> {
     if let Some(s) = o.open_screen {
         app.insert_resource(s);
     }
+    if let Some(dir) = o.menu_script.clone() {
+        app.insert_resource(MenuScript {
+            dir,
+            step: 0,
+            elapsed: 0.0,
+        })
+        .insert_resource(bevy::winit::WinitSettings::continuous())
+        .add_systems(Update, menu_script);
+    }
 
     if o.autoplay {
         app.insert_resource(Autoplay {
@@ -381,6 +473,16 @@ fn run() -> Result<(), String> {
         AppExit::Success => Ok(()),
         AppExit::Error(code) => Err(format!("exited with code {code}")),
     }
+}
+
+/// The rules file: next to the executable (an unpacked release), else relative to the working
+/// folder (development).
+fn config_path() -> std::path::PathBuf {
+    std::env::current_exe()
+        .ok()
+        .and_then(|e| e.parent().map(|d| d.join(GAME_CONFIG_PATH)))
+        .filter(|p| p.exists())
+        .unwrap_or_else(|| GAME_CONFIG_PATH.into())
 }
 
 fn main() -> ExitCode {
