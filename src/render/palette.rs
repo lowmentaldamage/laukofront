@@ -64,9 +64,40 @@ pub fn terrain_color(map: &GameMap, t: TileRef) -> [u8; 4] {
     }
 }
 
+/// Team of each player id in a team match (`u8::MAX` = none), set when a match starts.
+static TEAMS: std::sync::RwLock<Vec<u8>> = std::sync::RwLock::new(Vec::new());
+
+/// Hues of teams 1-4: red, blue, green, orange.
+const TEAM_HUES: [f32; 4] = [2.0, 215.0, 125.0, 35.0];
+
+/// Remembers the teams of the current match so players are coloured by team.
+pub fn set_teams(game: &crate::engine::Game) {
+    let mut v = vec![u8::MAX; game.players().len() + 2];
+    for p in game.players() {
+        if let Some(t) = p.team() {
+            v[p.id() as usize] = t;
+        }
+    }
+    if let Ok(mut w) = TEAMS.write() {
+        *w = v;
+    }
+}
+
 /// A distinct colour per player: the human is blue; others spread around the hue circle by the
-/// golden angle, skipping the blue range so nobody looks like the human.
+/// golden angle, skipping the blue range so nobody looks like the human. In a team match every
+/// team member gets a shade of the team's colour.
 pub fn player_color(id: PlayerId) -> [u8; 3] {
+    let team = TEAMS
+        .read()
+        .ok()
+        .and_then(|t| t.get(id as usize).copied())
+        .filter(|&t| t != u8::MAX);
+    if let Some(t) = team {
+        let hue = (TEAM_HUES[(t as usize) % 4] + ((id % 5) as f32 - 2.0) * 7.0).rem_euclid(360.0);
+        let sat = 0.55 + 0.1 * ((id % 3) as f32 / 2.0);
+        let val = 0.72 + 0.2 * ((id % 4) as f32 / 3.0);
+        return hsv_to_rgb(hue, sat, val);
+    }
     if id == HUMAN {
         return HUMAN_COLOR;
     }

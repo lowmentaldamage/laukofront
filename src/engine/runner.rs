@@ -23,7 +23,7 @@ use super::units::{UnitId, UnitKind};
 use super::weapons::{MoveWarshipExecution, NukeExecution, SamExecution, WarshipExecution};
 
 /// A player action, as upstream's intents. More kinds arrive with later milestones.
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, serde::Serialize, serde::Deserialize)]
 pub enum Intent {
     /// Pick (or move) a spawn point during the spawn phase.
     Spawn { player: PlayerId, tile: TileRef },
@@ -107,7 +107,7 @@ pub enum Intent {
 }
 
 /// What a single-player match is created with.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct MatchSetup {
     /// Size of a generated map (ignored for real-Earth maps).
     pub size: MapSize,
@@ -117,10 +117,13 @@ pub struct MatchSetup {
     pub nations: u32,
     pub difficulty: Difficulty,
     pub map: MapChoice,
+    /// Teams (2-4); 0 = free for all. You and the nations are shared out between the teams;
+    /// bots belong to none.
+    pub teams: u8,
 }
 
 /// Which map a match is played on.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub enum MapChoice {
     /// Generated from the seed in this style.
     Generated(MapStyle),
@@ -169,6 +172,7 @@ impl MatchSetup {
             nations: 0,
             difficulty: Difficulty::Medium,
             map: MapChoice::default(),
+            teams: 0,
         }
     }
 
@@ -243,6 +247,19 @@ pub fn new_match(mut config: GameConfig, setup: MatchSetup) -> Result<Game, Stri
             &game_id,
             setup.difficulty,
         )));
+    }
+    // Upstream `TeamAssignment` (simplified): you, then the nations, dealt out in turn.
+    if setup.teams >= 2 {
+        let teams = setup.teams.min(4);
+        let members: Vec<PlayerId> = game
+            .players()
+            .iter()
+            .filter(|p| p.kind() != PlayerType::Bot)
+            .map(|p| p.id())
+            .collect();
+        for (i, p) in members.into_iter().enumerate() {
+            game.set_team(p, (i % teams as usize) as u8);
+        }
     }
     Ok(game)
 }

@@ -1,7 +1,7 @@
 # Project status
 
-**Date:** 2026-11-21
-**State:** playable against bots and AI nations with diplomacy, boats, buildings, trade, warships and nukes, on generated or real-Earth maps (port milestones P0–P11). Next: menus (P12), save/audio (P13), release (P14).
+**Date:** 2026-11-23
+**State:** complete single-player game: menus, bots and AI nations, diplomacy, teams, boats, buildings, warships, nukes, generated and real-Earth maps, saves and sound (port milestones P0–P13). Next: release (P14).
 
 ## Done
 
@@ -18,15 +18,13 @@
 
 ## Not done
 
-- P12 menus and game modes (teams), P13 save/load,
-  audio and polish, P14 performance pass and release.
+- P14 release.
 - Later plan: online multiplayer, accounts, ranked play, clans.
 
 ## Known issues
 
 - Long notices wrap onto two lines; map labels show faintly through the leaderboard panel.
 
-- No menu yet: match settings come from the command line (CONTROLS.md).
 - The in-game notice uses "Copyright (c)" until a font with © is added (D30).
 
 - Encirclement is a simplified port (D25); worst single tick ~3 ms on the largest map.

@@ -238,7 +238,11 @@ fn click_map(
     mut settings: ResMut<ClientSettings>,
     window: Single<&Window, With<PrimaryWindow>>,
     mut right_press: Local<Option<Vec2>>,
+    screen: Res<crate::client::Screen>,
 ) {
+    if *screen != crate::client::Screen::Playing {
+        return;
+    }
     if buttons.just_pressed(MouseButton::Right) {
         if settings.build.is_some() {
             settings.build = None;
@@ -356,13 +360,31 @@ fn click_map(
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 fn keyboard(
     keys: Res<ButtonInput<KeyCode>>,
     game: Res<GameState>,
     mut settings: ResMut<ClientSettings>,
     mut pending: ResMut<PendingIntents>,
     mut notices: ResMut<Notices>,
+    mut screen: ResMut<crate::client::Screen>,
+    mut save: ResMut<crate::client::save::SaveRequested>,
+    mut load: ResMut<crate::client::save::LoadRequested>,
 ) {
+    use crate::client::Screen;
+    if *screen != Screen::Playing {
+        // Esc leaves the pause menu; other menus use their buttons.
+        if *screen == Screen::Paused && keys.just_pressed(KeyCode::Escape) {
+            *screen = Screen::Playing;
+        }
+        return;
+    }
+    if keys.just_pressed(KeyCode::F5) {
+        save.0 = true;
+    }
+    if keys.just_pressed(KeyCode::F9) {
+        load.0 = true;
+    }
     const DIGITS: [KeyCode; 9] = [
         KeyCode::Digit1,
         KeyCode::Digit2,
@@ -406,9 +428,17 @@ fn keyboard(
         }
     }
     if keys.just_pressed(KeyCode::Escape) {
-        settings.build = None;
-        settings.selected_ship = None;
-        settings.player_menu = None;
+        // Esc cancels what is selected; with nothing selected it opens the pause menu.
+        if settings.build.is_some()
+            || settings.selected_ship.is_some()
+            || settings.player_menu.is_some()
+        {
+            settings.build = None;
+            settings.selected_ship = None;
+            settings.player_menu = None;
+        } else {
+            *screen = Screen::Paused;
+        }
     }
     for (k, speed) in [(KeyCode::F1, 1), (KeyCode::F2, 2), (KeyCode::F3, 3)] {
         if keys.just_pressed(k) {

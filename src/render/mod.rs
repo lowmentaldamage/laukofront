@@ -85,6 +85,7 @@ pub fn map_sized_image(map: &GameMap, data: Vec<u8>) -> Image {
 }
 
 fn setup_map(mut commands: Commands, game: Res<GameState>, mut images: ResMut<Assets<Image>>) {
+    palette::set_teams(&game.0);
     let map = game.0.map();
     let handle = images.add(map_sized_image(map, paint_all(map)));
     commands.spawn((
@@ -115,6 +116,7 @@ fn rebuild_map(
         return;
     }
     let Some(texture) = texture else { return };
+    palette::set_teams(&game.0);
     let map = game.0.map();
     let _ = images.insert(&texture.0, map_sized_image(map, paint_all(map)));
     let size = Vec2::new(map.width() as f32, map.height() as f32);

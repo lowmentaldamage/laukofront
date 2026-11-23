@@ -38,3 +38,6 @@ Versions follow the build guide milestones. `1.0.0` is the finished game.
   `--map`, `--list-maps`; faster ship routing; nations hunt warships and finish island maps.
 - Our own 2D icons for buildings and ships; smooth ship and missile movement between ticks;
   smooth zoom; smaller player names.
+- P12: main menu, match setup, pause menu, settings screen, credits; team matches (2-4 teams).
+- P13: save and load (F5 / F9, menus), generated sound effects, end-screen statistics and land
+  chart.

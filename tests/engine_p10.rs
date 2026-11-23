@@ -500,6 +500,7 @@ fn nation_match(seed: i64, d: Difficulty) -> Game {
             nations: 4,
             difficulty: d,
             map: Default::default(),
+            teams: 0,
         },
     )
     .unwrap();

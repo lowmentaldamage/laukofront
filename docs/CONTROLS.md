@@ -41,15 +41,20 @@ Clicks on HUD panels never reach the map.
 | `N` | warship (click water near your port) |
 | `Z` `X` `C` | atom bomb / hydrogen bomb / MIRV |
 | `H` | show / hide the controls card |
-| `Esc` | cancel building, missile or warship selection; close the diplomacy menu; skip the tutorial |
+| `Esc` | cancel building, missile or warship selection; close the diplomacy menu; skip the tutorial; with nothing selected: pause menu (Esc again resumes) |
+| `F5` / `F9` | save / load the game |
 
-## Command line (until the menu exists, P12)
+## Command line
+
+Without options the game opens the main menu. Options start a match directly:
 
 ```powershell
 laukofront --size small|medium|large --bots 20 --seed 123
 laukofront --nations 6 --difficulty easy|medium|hard|impossible
 laukofront --map continents|archipelago|pangaea|lakes|world|europe|asia|africa|americas|british-isles
 laukofront --list-maps           # every map with size, land share, suggested players
+laukofront --teams 2             # 2, 3 or 4 teams (0 = free for all)
+laukofront --open menu|setup|settings|credits|pause   # open a screen (screenshots)
 laukofront --autoplay            # the game plays for you (demo)
 laukofront --perf-run 60         # 1080p frame-time measurement, then exit
 laukofront --screenshot shot.png --screenshot-at 10

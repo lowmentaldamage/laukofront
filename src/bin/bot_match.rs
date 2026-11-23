@@ -28,6 +28,7 @@ fn run() -> Result<(), String> {
     let (mut size, mut bots, mut seed, mut max_ticks) = (MapSize::Small, 10u32, 1i64, 60_000u64);
     let (mut nations, mut difficulty) = (0u32, Difficulty::Medium);
     let mut map = MapChoice::default();
+    let mut teams = 0u8;
     let mut it = std::env::args().skip(1);
     while let Some(a) = it.next() {
         let v = it.next().ok_or(format!("{a} needs a value"))?;
@@ -42,6 +43,7 @@ fn run() -> Result<(), String> {
             }
             "--bots" => bots = v.parse().map_err(|e| format!("--bots: {e}"))?,
             "--seed" => seed = v.parse().map_err(|e| format!("--seed: {e}"))?,
+            "--teams" => teams = v.parse().map_err(|e| format!("--teams: {e}"))?,
             "--map" => map = MapChoice::parse(&v).ok_or(format!("unknown map {v}"))?,
             "--nations" => nations = v.parse().map_err(|e| format!("--nations: {e}"))?,
             "--difficulty" => difficulty = Difficulty::parse(&v).ok_or("unknown difficulty")?,
@@ -59,6 +61,7 @@ fn run() -> Result<(), String> {
             nations,
             difficulty,
             map,
+            teams,
         },
     )?;
     let start = Instant::now();
@@ -132,8 +135,10 @@ fn run() -> Result<(), String> {
     );
     match g.winner().and_then(|w| g.player(w)) {
         Some(w) => println!(
-            "WINNER {} at tick {} ({:.1} game minutes); {:.1} s real time",
+            "WINNER {}{} at tick {} ({:.1} game minutes); {:.1} s real time",
             w.name(),
+            g.winner_team()
+                .map_or(String::new(), |t| format!(" (team {})", t + 1)),
             g.ticks(),
             g.elapsed_game_seconds() / 60.0,
             secs

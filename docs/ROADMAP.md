@@ -27,8 +27,8 @@ Milestones in order. Stage numbers refer to the build guide.
 | P9 Warships and nukes | **done** — silo, SAM, warships, atom/hydrogen bomb, MIRV, fallout |
 | P10 Diplomacy and nations | **done** — alliances, traitors, embargo, donations, targets, reactions, nation AI with 4 difficulties |
 | P11 Maps | **done** — styles, rivers, peaks, biomes; World, Europe, Asia, Africa, Americas, British Isles |
-| P12 Menus and modes | main menu, match setup, teams, Doomsday Clock, settings |
-| P13 Save, audio, polish | snapshots, sound, end-of-match statistics |
+| P12 Menus and modes | **done** — main menu, setup, pause, settings, teams (no Doomsday Clock, no presets, D44) |
+| P13 Save, audio, polish | **done** — replay saves (D43), generated sound effects (D44), end-screen stats |
 | P14 Performance and release | border-tile encirclement, mid-range PC, zip, v1.0.0 |
 
 ## Future

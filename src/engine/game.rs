@@ -49,6 +49,8 @@ pub struct Game {
     /// Every attack of the match, by id (inactive ones stay so executions can see they ended).
     attacks: Vec<Attack>,
     winner: Option<PlayerId>,
+    /// The winning team in a team match.
+    winner_team: Option<u8>,
     /// MIRVs launched this match (raises the MIRV price).
     pub(crate) mirvs_launched: u32,
     /// Nuke explosions this tick (tile, outer radius), for the renderer.
@@ -84,6 +86,7 @@ impl Game {
             changed_tiles: Vec::new(),
             attacks: Vec::new(),
             winner: None,
+            winner_team: None,
             mirvs_launched: 0,
             detonations: Vec::new(),
             sam_shots: Vec::new(),
@@ -333,6 +336,31 @@ impl Game {
     /// The winner, once the win check has found one.
     pub fn winner(&self) -> Option<PlayerId> {
         self.winner
+    }
+
+    /// The winning team, in a team match that has ended.
+    pub fn winner_team(&self) -> Option<u8> {
+        self.winner_team
+    }
+
+    /// Teams in this match (0 = free for all).
+    pub fn num_teams(&self) -> u8 {
+        self.players
+            .iter()
+            .filter_map(|p| p.team)
+            .max()
+            .map_or(0, |t| t + 1)
+    }
+
+    pub(crate) fn set_team(&mut self, p: PlayerId, team: u8) {
+        if let Some(pl) = self.player_mut(p) {
+            pl.team = Some(team);
+        }
+    }
+
+    pub(crate) fn set_winner_team(&mut self, team: u8, top: PlayerId) {
+        self.winner_team = Some(team);
+        self.set_winner(top);
     }
 
     pub(crate) fn set_winner(&mut self, p: PlayerId) {

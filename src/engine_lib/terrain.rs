@@ -22,7 +22,9 @@ use super::random::PseudoRandom;
 const EDGE_DROP: f64 = 0.45;
 
 /// The overall shape of a generated map.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
+#[derive(
+    Debug, Clone, Copy, PartialEq, Eq, Hash, Default, serde::Serialize, serde::Deserialize,
+)]
 pub enum MapStyle {
     /// A few large continents (the default).
     #[default]

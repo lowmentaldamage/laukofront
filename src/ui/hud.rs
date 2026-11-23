@@ -559,7 +559,14 @@ fn update_texts(
                     format!(
                         "{:>2}. {:<9} {:>5.1}%  {:>7}",
                         r.rank,
-                        if r.is_me { "You" } else { r.name.as_str() },
+                        match g.player(r.id).and_then(|p| p.team()) {
+                            Some(t) => format!(
+                                "T{} {}",
+                                t + 1,
+                                if r.is_me { "You" } else { r.name.as_str() }
+                            ),
+                            None => (if r.is_me { "You" } else { r.name.as_str() }).to_string(),
+                        },
                         r.land_share * 100.0,
                         fmt_num(r.troops)
                     ),

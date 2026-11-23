@@ -8,7 +8,7 @@ use super::player::PlayerId;
 pub type UnitId = u32;
 
 /// Upstream `UnitType` (the kinds ported so far).
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 pub enum UnitKind {
     TransportShip,
     TradeShip,

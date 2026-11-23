@@ -75,6 +75,8 @@ pub struct Player {
     pub(crate) targets: Vec<(u64, PlayerId)>,
     /// Alliance requests sent (accepted or rejected): (recipient, tick), for the cooldown.
     pub(crate) past_requests: Vec<(PlayerId, u64)>,
+    /// Team in a team match (`None`: free for all, and always for bots).
+    pub(crate) team: Option<u8>,
 }
 
 /// Upstream `Relation`, from the relation value.
@@ -124,6 +126,7 @@ impl Player {
             donations: Vec::new(),
             targets: Vec::new(),
             past_requests: Vec::new(),
+            team: None,
         }
     }
 
@@ -227,6 +230,10 @@ impl Player {
                 *r = 0.0;
             }
         }
+    }
+
+    pub fn team(&self) -> Option<u8> {
+        self.team
     }
 
     pub fn betrayals(&self) -> u32 {

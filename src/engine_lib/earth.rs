@@ -11,7 +11,7 @@ use super::terrain::{assign_biomes, finalize, noise_magnitudes};
 const MAGIC: &[u8; 6] = b"LKMAP1";
 
 /// A real-Earth map shipped with the game.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 pub enum EarthMap {
     World,
     Europe,

@@ -248,3 +248,17 @@ minimap show correctly; fixed the diplomacy menu drawing over the end screen.
 texture, icons all differ, every building and ship kind has one; zoom easing moves partway each
 frame and arrives within a second. Screenshots (medium generated map, Europe) show ports, defense
 posts, cities and ships with their icons, readable badges and smaller names.
+
+### 2026-11-23 — Port milestones P12-P13 (menus, teams, save, sound)
+
+**153 passed, 0 failed** (81 unit, 10 / 16 / 4 / 13 / 6 / 13 / 8 / 2 in
+`engine_p2 ... engine_p12`).
+
+New: teams are balanced and bots have none; teammates are friendly, never attack each other over a
+whole match, and the winning team owns the winner; save round trip replays to the same state
+hash; wrong version, wrong rules and wrong hash are refused; every sound is short, audible and in
+range; menu values step, wrap and print correctly; settings round trip with the new fields.
+Bots + nations in 2-4 teams (seeds 1-2): all six matches end with a team winner.
+
+Manual check: main menu and setup screen screenshots (HUD hidden behind the menus); team match
+runs (579 FPS). One 82 ms frame at 2 s into a run, when the first sound opens the audio device.

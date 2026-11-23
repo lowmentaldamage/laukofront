@@ -487,6 +487,35 @@ impl Execution for WinCheckExecution {
         };
         let elapsed = game.elapsed_game_seconds();
         let rules = &game.config().game;
+        // Team match: a team wins with the share of land summed over its players.
+        let teams = game.num_teams();
+        if teams > 0 {
+            let mut land = vec![0u64; teams as usize];
+            let mut best: Vec<Option<(PlayerId, u32)>> = vec![None; teams as usize];
+            for p in game.alive_players() {
+                if let Some(t) = p.team() {
+                    land[t as usize] += p.num_tiles() as u64;
+                    if best[t as usize].is_none_or(|b| p.num_tiles() > b.1) {
+                        best[t as usize] = Some((p.id(), p.num_tiles()));
+                    }
+                }
+            }
+            let need = game.map().num_land_tiles() as u64 * rules.win_percent as u64 * 10;
+            let timeout = elapsed >= game.config().attack_logic.hard_time_limit_seconds as f64;
+            let top_team = (0..teams as usize).max_by_key(|&t| (land[t], std::cmp::Reverse(t)));
+            if let Some(t) = top_team {
+                if land[t] * 1000 > need || timeout {
+                    if let Some((p, _)) = best[t] {
+                        game.set_winner_team(t as u8, p);
+                        self.active = false;
+                        return;
+                    }
+                }
+            }
+            if !timeout {
+                return;
+            }
+        }
         let won = elapsed >= game.config().attack_logic.hard_time_limit_seconds as f64
             || top.1 as u64 * 1000
                 > game.map().num_land_tiles() as u64 * rules.win_percent as u64 * 10;

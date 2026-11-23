@@ -238,6 +238,32 @@ impossible). Bots attack a neighbouring traitor first.
 - **Zoom glides** to the new level (about 0.15 s) instead of snapping.
 - Player names on the map are smaller.
 
+## Implemented (P12): menus and modes
+
+- Starting the game without options opens the **main menu** (Play, Continue saved game,
+  Settings, Credits, Quit) over a bots-only match playing in the background.
+- **New match:** map (four generated styles and six Earth maps), map size, bots (0-100), nations
+  (0-30), difficulty, mode, seed (or a new random one), "suggested players" for the map.
+- **Modes:** free for all, or **2, 3 or 4 teams**: you and the nations are dealt out between the
+  teams, bots belong to none. Teammates cannot attack each other and share a colour family; a
+  team wins when its players together hold 80% of the land.
+- **Pause menu** (Esc with nothing selected): resume, save, load, restart this match, settings,
+  main menu, quit. The match is paused while it is open.
+- **Settings** (saved between runs): sound volume, fullscreen, VSync, interface size, default
+  attack size, tutorial on or off.
+
+## Implemented (P13): save, sound, end screen
+
+- **Save and load:** "Save game" in the pause menu or F5; "Continue saved game" in the main menu,
+  "Load saved game" in the pause menu or F9. One save slot (`%APPDATA%\laukofront\save.toml`).
+  A save stores the match setup and your actions; loading replays them (the engine is
+  deterministic) and checks the result, so a save from other rules or another version is refused.
+- **Sound effects**, made by the game itself: clicks, attacks, building, alliances, warnings
+  (incoming attacks, betrayals), missile launches, explosions, victory and defeat.
+- **End screen:** victory, defeat or elimination (team results in team matches), time, your best
+  land share, troops and buildings, a chart of your land over the match; New match, Main menu,
+  Keep watching, Quit.
+
 ## Coming next
 
-- **P12:** main menu, match setup (map, players, difficulty, modes including teams), settings.
+- **P14:** release: QA pass, Windows package, version 1.0.0.

@@ -5,7 +5,7 @@ use bevy::prelude::*;
 use bevy::ui_widgets::{observe, Activate, Button};
 
 use super::{clock, font, ACCENT, DANGER, GOOD, PANEL, TEXT, TEXT_DIM};
-use crate::client::{GameState, MatchStats, RestartRequested};
+use crate::client::{GameState, MatchStats, RestartRequested, Screen};
 use crate::engine::{Game, HUMAN};
 
 #[derive(Component)]
@@ -16,6 +16,22 @@ struct EndTitle;
 
 #[derive(Component)]
 struct EndBody;
+
+const CHART_BARS: usize = 40;
+
+#[derive(Component)]
+struct EndBar(usize);
+
+/// Bar heights (0..1, relative to the best moment) for the land chart. Pure for tests.
+pub fn chart_bars(history: &[f32], bars: usize) -> Vec<f32> {
+    if history.is_empty() {
+        return vec![0.0; bars];
+    }
+    let max = history.iter().cloned().fold(0.0f32, f32::max).max(1e-6);
+    (0..bars)
+        .map(|i| history[(i * history.len() / bars).min(history.len() - 1)] / max)
+        .collect()
+}
 
 /// The player closed the panel to keep watching.
 #[derive(Resource, Default)]
@@ -28,14 +44,54 @@ impl Plugin for EndScreenPlugin {
         app.init_resource::<Dismissed>()
             .add_systems(Startup, setup)
             .add_systems(Update, update);
+        // A new match brings the panel back.
+        app.add_systems(
+            Update,
+            |stats: Res<MatchStats>, mut d: ResMut<Dismissed>| {
+                if stats.is_changed() && !stats.ended && d.0 {
+                    d.0 = false;
+                }
+            },
+        );
     }
 }
 
 /// Title, body and colour of the end screen. Pure for tests.
 pub fn end_text(game: &Game, stats: &MatchStats) -> (String, String, Color) {
     let me = game.player(HUMAN);
-    let peak = format!("Your best: {:.1}% of the land", stats.peak_land * 100.0);
+    let peak = format!(
+        "Your best: {:.1}% of the land, {} troops, {} buildings",
+        stats.peak_land * 100.0,
+        super::fmt_num(stats.peak_troops as f64),
+        stats.peak_buildings
+    );
     let time = format!("Match time {}", clock(game));
+    if let Some(t) = game.winner_team() {
+        let mine = me.and_then(|p| p.team());
+        return if mine == Some(t) {
+            (
+                "VICTORY".into(),
+                format!(
+                    "Your team (team {}) owns most of the land.
+{time}
+{peak}",
+                    t + 1
+                ),
+                GOOD,
+            )
+        } else {
+            (
+                "DEFEAT".into(),
+                format!(
+                    "Team {} won the match.
+{time}
+{peak}",
+                    t + 1
+                ),
+                DANGER,
+            )
+        };
+    }
     match game.winner() {
         Some(w) if w == HUMAN => (
             "VICTORY".into(),
@@ -104,6 +160,37 @@ fn setup(mut commands: Commands) {
                 TextLayout::justify(Justify::Center),
                 EndBody,
             ));
+            // Your land over the match.
+            p.spawn((
+                Node {
+                    width: px(360),
+                    height: px(60),
+                    align_items: AlignItems::FlexEnd,
+                    column_gap: px(1),
+                    padding: UiRect::all(px(3)),
+                    border_radius: BorderRadius::all(px(4)),
+                    ..default()
+                },
+                BackgroundColor(Color::srgba(1.0, 1.0, 1.0, 0.05)),
+            ))
+            .with_children(|chart| {
+                for i in 0..CHART_BARS {
+                    chart.spawn((
+                        Node {
+                            flex_grow: 1.0,
+                            height: percent(0),
+                            ..default()
+                        },
+                        BackgroundColor(ACCENT.with_alpha(0.8)),
+                        EndBar(i),
+                    ));
+                }
+            });
+            p.spawn((
+                Text::new("Your land over the match"),
+                font(11.0),
+                TextColor(TEXT_DIM),
+            ));
             p.spawn(Node {
                 column_gap: px(10),
                 ..default()
@@ -117,6 +204,15 @@ fn setup(mut commands: Commands) {
                          mut d: ResMut<Dismissed>| {
                             r.0 = true;
                             d.0 = false;
+                        },
+                    ),
+                ));
+                row.spawn((
+                    button("Main menu"),
+                    observe(
+                        |_: On<Activate>, mut s: ResMut<Screen>, mut d: ResMut<Dismissed>| {
+                            *s = Screen::MainMenu;
+                            d.0 = true;
                         },
                     ),
                 ));
@@ -147,6 +243,7 @@ fn update(
     mut panel: Query<&mut Node, With<EndPanel>>,
     mut title: Query<(&mut Text, &mut TextColor), (With<EndTitle>, Without<EndBody>)>,
     mut body: Query<&mut Text, (With<EndBody>, Without<EndTitle>)>,
+    mut bars: Query<(&EndBar, &mut Node), Without<EndPanel>>,
 ) {
     let show = stats.ended && !dismissed.0;
     for mut n in panel.iter_mut() {
@@ -157,6 +254,13 @@ fn update(
     }
     if !show {
         return;
+    }
+    let heights = chart_bars(&stats.land_history, CHART_BARS);
+    for (bar, mut n) in bars.iter_mut() {
+        let h = percent(heights[bar.0] * 100.0);
+        if n.height != h {
+            n.height = h;
+        }
     }
     let (t, b, c) = end_text(&game.0, &stats);
     for (mut text, mut color) in title.iter_mut() {

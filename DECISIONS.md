@@ -334,3 +334,20 @@ One entry per decision: date, choice, reason, rejected options.
   tick, 0.1 s). Zoom eases in log space.
 - **Reason:** play-test feedback (line icons looked unfinished, ships stuttered at 10 Hz); generated
   art keeps D20 (no OpenFront assets) and needs no downloads.
+
+## D43. Saves replay the match
+- **Date:** 2026-11-23
+- **Choice:** a save holds the match setup, the human's intents per tick, the tick count, the
+  state hash and a hash of the rules. Loading builds the match and replays it; the state hash
+  must match. Upstream instead snapshots every object (`snapshot/*`).
+- **Reason:** the engine is deterministic, so a replay is exact, the files are tiny and no
+  serializer is needed for every execution's private state. Cost: loading a long match takes a few
+  seconds (the engine runs about 3 000-6 000 ticks per second).
+
+## D44. Generated sounds; omitted modes
+- **Date:** 2026-11-23
+- **Choice:** sound effects are synthesised at startup (sine, square and filtered noise with
+  envelopes) and played through a custom Bevy audio source; no sound files, no new crates. There is
+  no music. Not ported: Doomsday Clock mode and the setup presets (Default, Fast, Long, Teams);
+  every setting they would change is in the setup screen.
+- **Reason:** no downloads or licences to track; the modes left out are optional variants.

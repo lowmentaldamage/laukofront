@@ -11,6 +11,9 @@ use crate::engine_lib::game_map::TileRef;
 
 pub use settings::SavedSettings;
 
+pub mod audio;
+pub mod save;
+
 /// The running match.
 #[derive(Resource)]
 pub struct GameState(pub Game);
@@ -135,11 +138,32 @@ pub struct MatchStats {
     /// factories).
     pub gold_rate: f64,
     gold_history: std::collections::VecDeque<i64>,
+    /// Your share of the land every 10 s of game time (end-screen chart).
+    pub land_history: Vec<f32>,
+    pub peak_troops: i64,
+    pub peak_buildings: usize,
 }
 
 /// Restart with the next seed when set (end screen button).
 #[derive(Resource, Default)]
 pub struct RestartRequested(pub bool);
+
+/// Start exactly this match (menu "Start", loading a save).
+#[derive(Resource, Default)]
+pub struct StartMatch(pub Option<MatchSetup>);
+
+/// Which screen is in front. Menus show over a live match (a bots-only one behind the main
+/// menu); the map only takes input while `Playing`.
+#[derive(Resource, Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum Screen {
+    #[default]
+    Playing,
+    MainMenu,
+    Setup,
+    Settings,
+    Credits,
+    Paused,
+}
 
 pub struct ClientPlugin {
     pub tick_hz: u32,
@@ -160,11 +184,66 @@ impl Plugin for ClientPlugin {
             .init_resource::<Notices>()
             .init_resource::<MatchStats>()
             .init_resource::<RestartRequested>()
+            .init_resource::<StartMatch>()
+            .add_plugins(audio::AudioFxPlugin)
+            .init_resource::<save::IntentLog>()
+            .init_resource::<save::SaveRequested>()
+            .init_resource::<save::LoadRequested>()
+            .init_resource::<Screen>()
             .add_systems(FixedUpdate, run_tick)
             .add_systems(
                 Update,
-                (apply_speed, age_notices, track_spawn_time, restart),
+                (
+                    apply_speed,
+                    age_notices,
+                    track_spawn_time,
+                    restart,
+                    save_and_load,
+                ),
             );
+    }
+}
+
+/// Handles "Save game" and "Load" (pause menu, main menu, F5 / F9).
+#[allow(clippy::too_many_arguments)]
+fn save_and_load(
+    mut save_req: ResMut<save::SaveRequested>,
+    mut load_req: ResMut<save::LoadRequested>,
+    mut game: ResMut<GameState>,
+    mut setup: ResMut<CurrentSetup>,
+    mut log: ResMut<save::IntentLog>,
+    mut notices: ResMut<Notices>,
+    mut stats: ResMut<MatchStats>,
+    mut rebuild: ResMut<MapRebuild>,
+    mut changes: ResMut<TileChanges>,
+    mut captures: ResMut<CaptureEvents>,
+) {
+    if std::mem::take(&mut save_req.0) {
+        let f = save::SaveFile::capture(&game.0, setup.0, &log);
+        match save::write_save(&f) {
+            Ok(p) => notices.push_kind(format!("Game saved ({})", p.display()), NoticeKind::Good),
+            Err(e) => notices.push_kind(format!("Could not save: {e}"), NoticeKind::Danger),
+        }
+    }
+    if std::mem::take(&mut load_req.0) {
+        let result = save::read_save().and_then(|f| {
+            let s = f.setup;
+            f.replay(game.0.config().clone()).map(|(g, l)| (g, l, s))
+        });
+        match result {
+            Ok((g, l, s)) => {
+                game.0 = g;
+                *log = l;
+                setup.0 = s;
+                changes.0.clear();
+                captures.0.clear();
+                notices.0.clear();
+                *stats = MatchStats::default();
+                rebuild.0 = true;
+                notices.push_kind("Saved game loaded", NoticeKind::Good);
+            }
+            Err(e) => notices.push_kind(format!("Could not load: {e}"), NoticeKind::Danger),
+        }
     }
 }
 
@@ -341,12 +420,28 @@ fn run_tick(
     mut stats: ResMut<MatchStats>,
     mut fx: ResMut<WeaponFx>,
     mut motion: ResMut<UnitMotion>,
+    mut log: ResMut<save::IntentLog>,
+    mut sounds: ResMut<audio::SoundQueue>,
 ) {
     if settings.paused {
         return;
     }
+    use audio::Sfx;
     let intents = std::mem::take(&mut pending.0);
     let g = &mut game.0;
+    if !intents.is_empty() {
+        log.0.push((g.ticks(), intents.clone()));
+    }
+    for i in &intents {
+        match i {
+            Intent::Attack { .. } | Intent::Boat { .. } => sounds.0.push(Sfx::Attack),
+            Intent::Build { .. } | Intent::Upgrade { .. } | Intent::Warship { .. } => {
+                sounds.0.push(Sfx::Build)
+            }
+            Intent::Nuke { .. } => sounds.0.push(Sfx::Launch),
+            _ => {}
+        }
+    }
     let before = snapshot(g);
     motion.prev.clear();
     for u in g
@@ -361,6 +456,12 @@ fn run_tick(
 
     for &(t, r) in g.detonations() {
         fx.blasts.push((t, r, 0.0));
+    }
+    if g.detonations()
+        .iter()
+        .any(|&(_, r)| r > g.config().weapons.warhead_outer)
+    {
+        sounds.0.push(Sfx::Explosion);
     }
     for &(a, b) in g.sam_shots() {
         fx.shots.push((a, b, true, 0.0));
@@ -378,9 +479,17 @@ fn run_tick(
         captures.0.drain(..100_000);
     }
     for (text, kind) in tick_notices(g, &before.alive, &before.incoming, before.my_tiles) {
+        if kind == NoticeKind::Danger {
+            sounds.0.push(Sfx::Warning);
+        }
         notices.push_kind(text, kind);
     }
     for (text, kind) in diplo_notices(g) {
+        match kind {
+            NoticeKind::Good => sounds.0.push(Sfx::Alliance),
+            NoticeKind::Danger => sounds.0.push(Sfx::Warning),
+            _ => {}
+        }
         notices.push_kind(text, kind);
     }
     for id in nukes_at_me(g) {
@@ -411,6 +520,17 @@ fn run_tick(
             stats.gold_rate = ((last - first) as f64 / n * hz).max(0.0);
         }
         stats.peak_land = stats.peak_land.max(me.num_tiles() as f64 / land);
+        stats.peak_troops = stats.peak_troops.max(me.troops());
+        if g.ticks().is_multiple_of(100) && me.has_spawned() && !stats.ended {
+            stats
+                .land_history
+                .push((me.num_tiles() as f64 / land) as f32);
+            let built = g
+                .player_units(HUMAN, None)
+                .filter(|u| u.kind().is_structure())
+                .count();
+            stats.peak_buildings = stats.peak_buildings.max(built);
+        }
         if me.has_spawned() && !me.is_alive() {
             stats.ended = true;
         }
@@ -421,9 +541,12 @@ fn run_tick(
             let name = g
                 .player(w)
                 .map_or("?".to_string(), |p| p.name().to_string());
-            if w == HUMAN {
+            let my_team = g.player(HUMAN).and_then(|p| p.team());
+            if w == HUMAN || (my_team.is_some() && g.winner_team() == my_team) {
+                sounds.0.push(Sfx::Victory);
                 notices.push_kind("You won!", NoticeKind::Good);
             } else {
+                sounds.0.push(Sfx::Defeat);
                 notices.push_kind(format!("{name} won the game"), NoticeKind::Danger);
             }
         }
@@ -452,20 +575,28 @@ fn restart(
     mut rebuild: ResMut<MapRebuild>,
     mut pending: ResMut<PendingIntents>,
     mut settings: ResMut<ClientSettings>,
+    mut start: ResMut<StartMatch>,
+    mut log: ResMut<save::IntentLog>,
 ) {
-    if !req.0 {
+    let next = if let Some(s) = start.0.take() {
+        s
+    } else if req.0 {
+        let mut n = setup.0;
+        n.seed = n.seed.wrapping_add(1);
+        n
+    } else {
         return;
-    }
+    };
     req.0 = false;
     settings.player_menu = None;
     settings.selected_ship = None;
     settings.build = None;
-    let mut next = setup.0;
-    next.seed = next.seed.wrapping_add(1);
+    settings.paused = false;
     match new_match(game.0.config().clone(), next) {
         Ok(g) => {
             game.0 = g;
             setup.0 = next;
+            log.0.clear();
             changes.0.clear();
             captures.0.clear();
             pending.0.clear();

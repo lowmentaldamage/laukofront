@@ -13,6 +13,12 @@ pub struct SavedSettings {
     pub tutorial_done: bool,
     /// Attack size the game starts with (0.1..=0.9).
     pub default_attack_ratio: f64,
+    /// Sound volume 0..=1.
+    pub volume: f32,
+    pub fullscreen: bool,
+    pub vsync: bool,
+    /// Size of all menus and panels (0.75..=1.5).
+    pub ui_scale: f32,
 }
 
 impl Default for SavedSettings {
@@ -20,6 +26,10 @@ impl Default for SavedSettings {
         Self {
             tutorial_done: false,
             default_attack_ratio: 0.2,
+            volume: 0.6,
+            fullscreen: false,
+            vsync: true,
+            ui_scale: 1.0,
         }
     }
 }
@@ -42,6 +52,8 @@ impl SavedSettings {
     pub fn from_toml(s: &str) -> Option<Self> {
         let mut v: Self = toml::from_str(s).ok()?;
         v.default_attack_ratio = v.default_attack_ratio.clamp(0.1, 0.9);
+        v.volume = v.volume.clamp(0.0, 1.0);
+        v.ui_scale = v.ui_scale.clamp(0.75, 1.5);
         Some(v)
     }
 
@@ -69,6 +81,10 @@ mod tests {
         let s = SavedSettings {
             tutorial_done: true,
             default_attack_ratio: 0.5,
+            volume: 0.3,
+            fullscreen: true,
+            vsync: false,
+            ui_scale: 1.25,
         };
         assert_eq!(SavedSettings::from_toml(&s.to_toml()), Some(s));
         let wild = SavedSettings::from_toml("default_attack_ratio = 7.0").unwrap();

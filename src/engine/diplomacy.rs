@@ -183,9 +183,23 @@ impl Game {
             .collect()
     }
 
-    /// Upstream `isFriendly` (no teams yet): yourself or an ally.
+    /// Upstream `isOnSameTeam`: both in the same team (bots never are).
+    pub fn same_team(&self, a: PlayerId, b: PlayerId) -> bool {
+        if a == b {
+            return false;
+        }
+        match (
+            self.player(a).and_then(|p| p.team),
+            self.player(b).and_then(|p| p.team),
+        ) {
+            (Some(x), Some(y)) => x == y,
+            _ => false,
+        }
+    }
+
+    /// Upstream `isFriendly`: yourself, a teammate or an ally.
     pub fn is_friendly(&self, a: PlayerId, b: PlayerId) -> bool {
-        a == b || self.is_allied(a, b)
+        a == b || self.same_team(a, b) || self.is_allied(a, b)
     }
 
     /// Upstream `getTraitorRemainingTicks`.

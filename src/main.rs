@@ -14,7 +14,9 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use bevy::prelude::*;
 use bevy::window::{PresentMode, WindowResolution};
 
-use laukofront::client::{ClientPlugin, ClientSettings, CurrentSetup, GameState, PendingIntents};
+use laukofront::client::{
+    ClientPlugin, ClientSettings, CurrentSetup, GameState, PendingIntents, Screen,
+};
 use laukofront::config::{Difficulty, GameConfig, MapSize, GAME_CONFIG_PATH};
 use laukofront::engine::units::UnitKind;
 use laukofront::engine::util::spawn_tiles;
@@ -31,6 +33,10 @@ struct Options {
     perf_run: Option<f32>,
     screenshot: Option<String>,
     screenshot_at: f32,
+    /// Start at the main menu (no match options given).
+    menu: bool,
+    /// Open this screen at start (for documentation screenshots).
+    open_screen: Option<Screen>,
 }
 
 /// Prints every map with its size, land share and suggested players (`--list-maps`).
@@ -68,6 +74,8 @@ fn parse_args() -> Result<Options, String> {
         perf_run: None,
         screenshot: None,
         screenshot_at: 6.0,
+        menu: std::env::args().len() <= 1,
+        open_screen: None,
     };
     let mut nations: Option<u32> = None;
     let mut bots: Option<u32> = None;
@@ -100,6 +108,12 @@ fn parse_args() -> Result<Options, String> {
             }
             "--seed" => o.setup.seed = v.parse().map_err(|e| format!("--seed: {e}"))?,
             "--nations" => nations = Some(v.parse().map_err(|e| format!("--nations: {e}"))?),
+            "--teams" => {
+                o.setup.teams = v.parse().map_err(|e| format!("--teams: {e}"))?;
+                if o.setup.teams == 1 || o.setup.teams > 4 {
+                    return Err("--teams must be 0 (free for all) or 2-4".into());
+                }
+            }
             "--difficulty" => {
                 o.setup.difficulty = Difficulty::parse(&v).ok_or(format!(
                     "unknown difficulty {v} (easy|medium|hard|impossible)"
@@ -107,6 +121,16 @@ fn parse_args() -> Result<Options, String> {
             }
             "--perf-run" => o.perf_run = Some(v.parse().map_err(|e| format!("--perf-run: {e}"))?),
             "--screenshot" => o.screenshot = Some(v),
+            "--open" => {
+                o.open_screen = Some(match v.as_str() {
+                    "menu" => Screen::MainMenu,
+                    "setup" => Screen::Setup,
+                    "settings" => Screen::Settings,
+                    "credits" => Screen::Credits,
+                    "pause" => Screen::Paused,
+                    o => return Err(format!("unknown screen {o}")),
+                })
+            }
             "--screenshot-at" => {
                 o.screenshot_at = v.parse().map_err(|e| format!("--screenshot-at: {e}"))?
             }
@@ -314,7 +338,19 @@ fn run() -> Result<(), String> {
         MapRenderPlugin,
         InputPlugin,
         UiPlugin,
+        laukofront::menu::MenuPlugin,
     ));
+    if o.menu {
+        // No match on the command line: the main menu, over a bots-only match at double speed.
+        app.insert_resource(Screen::MainMenu)
+            .insert_resource(ClientSettings {
+                speed: 2,
+                ..default()
+            });
+    }
+    if let Some(s) = o.open_screen {
+        app.insert_resource(s);
+    }
 
     if o.autoplay {
         app.insert_resource(Autoplay {
