@@ -11,7 +11,18 @@ See `NOTICE.md`.
 teams, boats, buildings, warships, nukes, generated and real-Earth maps, saves and sound. See
 `PROJECT_STATUS.md`.
 
-## Quick start (Windows, PowerShell)
+## Download and play (Windows)
+
+1. Open **[Releases](https://github.com/lowmentaldamage/laukofront/releases/latest)**.
+2. Download **`laukofront.exe`** (one file) or **`laukofront-1.0.0-windows.zip`** (with licence
+   files, controls and the full source).
+3. Double-click `laukofront.exe` → **Play** → **Start**.
+
+Windows may warn that the program is unknown (it is not code-signed): click **More info → Run
+anyway**. Press **H** in the game for the controls; a Slovenian player guide is in
+[`docs/laukofront-navodila.docx`](docs/laukofront-navodila.docx).
+
+## Build from source (Windows, PowerShell)
 
 ```powershell
 cargo run --release                       # main menu

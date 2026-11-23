@@ -384,7 +384,14 @@ fn autoplay(
 
 fn run() -> Result<(), String> {
     let o = parse_args()?;
-    let config = GameConfig::load(config_path()).map_err(|e| e.to_string())?;
+    // The rules file next to the exe (or in the project) wins; otherwise the copy built into the
+    // exe, so a lone laukofront.exe runs too.
+    let path = config_path();
+    let config = if path.exists() {
+        GameConfig::load(&path).map_err(|e| e.to_string())?
+    } else {
+        GameConfig::from_toml_str(BUILT_IN_RULES, "built-in game.toml").map_err(|e| e.to_string())?
+    };
     let tick_hz = config.game.tick_hz;
     let game = new_match(config, o.setup)?;
     println!(
@@ -479,6 +486,9 @@ fn run() -> Result<(), String> {
         AppExit::Error(code) => Err(format!("exited with code {code}")),
     }
 }
+
+/// `assets/config/game.toml` as it was when the exe was built.
+const BUILT_IN_RULES: &str = include_str!("../assets/config/game.toml");
 
 /// The rules file: next to the executable (an unpacked release), else relative to the working
 /// folder (development).

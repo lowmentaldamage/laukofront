@@ -13,7 +13,8 @@ laukofront-source.zip.
 Run
 ---
 Double-click laukofront.exe. The main menu opens: Play -> choose a map and players -> Start.
-Keep the "assets" folder next to the exe.
+The exe also runs on its own; the "assets" folder only lets you change the game rules
+(assets\config\game.toml).
 
 If Windows SmartScreen or Smart App Control blocks the program, it is because the exe is not
 signed. Choose "More info" -> "Run anyway", or build it yourself from the source.
