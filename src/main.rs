@@ -294,14 +294,14 @@ fn autoplay(
     }
     // After a minute, keep the diplomacy menu open on the biggest other player (for screenshots).
     if g.ticks() >= 600
-        && settings.player_menu.is_none()
+        && settings.menu_tile.is_none()
         && g.player(HUMAN).is_some_and(|p| p.is_alive())
     {
-        settings.player_menu = g
+        settings.menu_tile = g
             .alive_players()
             .filter(|p| p.id() != HUMAN)
             .max_by_key(|p| p.num_tiles())
-            .map(|p| p.id());
+            .map(|p| p.tiles()[p.tiles().len() / 2]);
         settings.menu_pos = Vec2::new(560.0, 240.0);
     }
     // Diplomacy: accept alliance requests, and every 20 s ask a nation next to us.

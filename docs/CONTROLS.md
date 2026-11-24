@@ -9,11 +9,11 @@ Implemented in P5–P6 (`src/input/mod.rs`, `src/ui/`, `src/render/camera.rs`). 
 |---|---|
 | Left click on unclaimed land (spawn phase) | spawn there (click again to move, until the phase ends) |
 | Left click on a neighbour's land or free land next to you | attack it with the current attack size |
-| Left click on land across the water | send a transport ship (attack size troops; max 3 boats) |
+| Left click on land across the water | send a transport ship (attack size troops; max 3 boats at once). Anywhere on a player's land works: the boat lands on their coast nearest the click |
 | Left click on one of your buildings | upgrade it (city, port, factory) |
 | Build bar (bottom) / Q E F G, then click your land | build city / port / factory / defense post |
 | Right click (while building) | cancel |
-| Right click a player's land | diplomacy menu: alliance, break, renew, embargo, send troops / gold, target, reactions |
+| Right click any tile | action menu (upstream's radial menu): on a player — attack, send boat, alliance, break, renew, embargo, send troops / gold, ask allies to attack, reactions; on free land — expand, send boat; on your land — build anything that fits, upgrade; on the sea — build a warship |
 | accept / reject / renew (top-right panel) | answer alliance requests, renew an ending alliance |
 | Left click your warship, then water | move the warship |
 | Missile chosen (Z / X / C), then click | launch at that tile (blast radius shown under the cursor, enemy SAM ranges in blue) |

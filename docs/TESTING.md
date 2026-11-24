@@ -269,3 +269,10 @@ Full checklist with results: `docs/QA.md`. 153 tests pass; `--menu-script` press
 buttons (Play, Start, pause, Save game, Main menu, Continue saved game) and every step does what
 it should; the packaged zip runs from an outside folder. Found and fixed: the saved VSync setting
 capped the frame-time measurement at the monitor's 165 Hz.
+
+### 2026-11-24 — 1.0.1 (boats, action menu)
+
+**155 passed, 0 failed.** New `engine_boats`: on continents, archipelago and Europe, starting on a
+coast, clicks on land across the sea send boats (before the fix about two thirds of them were
+refused), three boats land and take land. Menu tests: building on your land, expanding next to it,
+no attack or boat against allies. Screenshot: right click on a faraway nation offers "Send boat".

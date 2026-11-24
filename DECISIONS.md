@@ -351,3 +351,11 @@ One entry per decision: date, choice, reason, rejected options.
   no music. Not ported: Doomsday Clock mode and the setup presets (Default, Fast, Long, Teams);
   every setting they would change is in the setup screen.
 - **Reason:** no downloads or licences to track; the modes left out are optional variants.
+
+## D45. Boats land anywhere on a reachable player
+- **Date:** 2026-11-24
+- **Choice:** a boat aimed at a player's land lands on that player's coast nearest the click
+  (any distance, on a sea the attacker's coast touches); upstream gives up beyond 50 tiles. Free
+  land searches up to 200 tiles. Right click opens one action menu for every kind of tile (attack,
+  boat, build, warship, diplomacy), like upstream's radial menu, as a list.
+- **Reason:** play-test report: most clicks on enemies across the sea did nothing.

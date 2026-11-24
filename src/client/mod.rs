@@ -67,8 +67,8 @@ pub struct ClientSettings {
     pub build: Option<crate::engine::units::UnitKind>,
     /// Your warship chosen by clicking it; the next water click moves it.
     pub selected_ship: Option<crate::engine::units::UnitId>,
-    /// Player whose diplomacy menu is open (right click on their land).
-    pub player_menu: Option<PlayerId>,
+    /// Tile whose action menu is open (right click): attack, boat, build, diplomacy…
+    pub menu_tile: Option<TileRef>,
     /// Screen position the menu opened at.
     pub menu_pos: Vec2,
 }
@@ -82,7 +82,7 @@ impl Default for ClientSettings {
             show_help: false,
             build: None,
             selected_ship: None,
-            player_menu: None,
+            menu_tile: None,
             menu_pos: Vec2::ZERO,
         }
     }
@@ -588,7 +588,7 @@ fn restart(
         return;
     };
     req.0 = false;
-    settings.player_menu = None;
+    settings.menu_tile = None;
     settings.selected_ship = None;
     settings.build = None;
     settings.paused = false;

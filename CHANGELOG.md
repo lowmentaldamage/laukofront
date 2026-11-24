@@ -2,6 +2,16 @@
 
 Versions follow the build guide milestones. `1.0.0` is the finished game.
 
+## 1.0.1 — 2026-11-24
+
+- Boats: clicking any land of a player you can reach by sea now sends a boat (it lands on their
+  coast nearest the click); before, clicks more than 50 tiles from their coast were refused.
+  Free land looks up to 200 tiles for a landing. Clearer messages when no boat can go (no coast
+  yet, or land on another sea).
+- Right click any tile for an action menu: attack, send boat, expand, build, upgrade, warship,
+  and every diplomacy action, with troop counts and prices.
+- Boat notices say when the boat will land.
+
 ## 1.0.0 — 2026-11-23
 
 The finished single-player game (port milestones P0-P14, listed below in order). Release:

@@ -78,6 +78,38 @@ pub fn target_transport_tile(game: &Game, attacker: PlayerId, tile: TileRef) -> 
             return best;
         }
     }
+    // Further away (ours, D45): a player's land anywhere lands on that player's reachable coast
+    // nearest the click, so clicking deep inland still sends a boat; free land looks up to 4x
+    // the usual distance.
+    if target_id != 0 {
+        let pl = game.player(target_id)?;
+        return pl
+            .border_tiles()
+            .iter()
+            .copied()
+            .filter(|&t| ok(t))
+            .min_by_key(|&t| (map.euclidean_dist_squared(t, tile), t));
+    }
+    let far = max * 4;
+    for d in (max + 1)..=far {
+        let mut best: Option<TileRef> = None;
+        for dx in -d..=d {
+            let dy_abs = d - dx.abs();
+            for dy in [dy_abs, -dy_abs] {
+                if let Some(t) = map.tile(cx + dx, cy + dy) {
+                    if ok(t) && best.is_none_or(|b| t < b) {
+                        best = Some(t);
+                    }
+                }
+                if dy_abs == 0 {
+                    break;
+                }
+            }
+        }
+        if best.is_some() {
+            return best;
+        }
+    }
     None
 }
 

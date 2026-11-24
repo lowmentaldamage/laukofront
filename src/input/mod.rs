@@ -194,7 +194,12 @@ pub fn click_action_with(
     {
         return ClickAction::Refuse("All 3 boats are at sea");
     }
-    ClickAction::Refuse("Not reachable by land or by boat from your coast")
+    // Say why no boat can go.
+    let touches_sea = me.border_tiles().iter().any(|&b| map.is_shore(b));
+    if !touches_sea {
+        return ClickAction::Refuse("No boats yet: expand your land to the coast first");
+    }
+    ClickAction::Refuse("Not reachable: that land is not on a sea your coast touches")
 }
 
 fn cursor_tile(
@@ -252,19 +257,14 @@ fn click_map(
         *right_press = window.cursor_position();
     }
     if buttons.just_released(MouseButton::Right) {
-        // A right click (not a camera drag) on a player's land opens the diplomacy menu.
+        // A right click (not a camera drag) opens the action menu for that tile (upstream's
+        // radial menu): attack, boat, build, warship and diplomacy, whatever fits there.
         let pos = window.cursor_position();
         let clicked = matches!((*right_press, pos), (Some(a), Some(b)) if a.distance(b) < 6.0);
         *right_press = None;
         if clicked {
-            let owner = hovered.0.and_then(|t| game.0.owner(t));
-            match owner {
-                Some(o) if o != HUMAN => {
-                    settings.player_menu = Some(o);
-                    settings.menu_pos = pos.unwrap_or_default();
-                }
-                _ => settings.player_menu = None,
-            }
+            settings.menu_tile = hovered.0;
+            settings.menu_pos = pos.unwrap_or_default();
         }
         return;
     }
@@ -272,7 +272,7 @@ fn click_map(
         return;
     }
     let Some(tile) = hovered.0 else { return };
-    if settings.player_menu.take().is_some() {
+    if settings.menu_tile.take().is_some() {
         // A click on the map closes the menu and does nothing else.
         return;
     }
@@ -306,7 +306,13 @@ fn click_map(
                 tile,
                 troops: Some(troops),
             });
-            notices.push(format!("Boat launched with {:.0} troops", troops));
+            let eta = can_send_boat(&game.0, HUMAN, tile).map(|(s, d)| {
+                game.0.map().manhattan_dist(s, d) as f64 * 0.8 / game.0.config().game.tick_hz as f64
+            });
+            notices.push(match eta {
+                Some(s) => format!("Boat sailing with {troops:.0} troops, lands in about {s:.0} s"),
+                None => format!("Boat sailing with {troops:.0} troops"),
+            });
         }
         ClickAction::Build { kind, tile } => {
             pending.0.push(Intent::Build {
@@ -431,11 +437,11 @@ fn keyboard(
         // Esc cancels what is selected; with nothing selected it opens the pause menu.
         if settings.build.is_some()
             || settings.selected_ship.is_some()
-            || settings.player_menu.is_some()
+            || settings.menu_tile.is_some()
         {
             settings.build = None;
             settings.selected_ship = None;
-            settings.player_menu = None;
+            settings.menu_tile = None;
         } else {
             *screen = Screen::Paused;
         }

@@ -7,14 +7,14 @@ laukofront is a Rust port of the **OpenFront** engine (<https://github.com/openf
 **© OpenFront and Contributors.** laukofront is not affiliated with or endorsed by OpenFront.
 See `NOTICE.md`.
 
-**Status:** version 1.0.0, a complete single-player game: menus, AI nations and bots, diplomacy,
+**Status:** version 1.0.1, a complete single-player game: menus, AI nations and bots, diplomacy,
 teams, boats, buildings, warships, nukes, generated and real-Earth maps, saves and sound. See
 `PROJECT_STATUS.md`.
 
 ## Download and play (Windows)
 
 1. Open **[Releases](https://github.com/lowmentaldamage/laukofront/releases/latest)**.
-2. Download **`laukofront.exe`** (one file) or **`laukofront-1.0.0-windows.zip`** (with licence
+2. Download **`laukofront.exe`** (one file) or **`laukofront-<version>-windows.zip`** (with licence
    files, controls and the full source).
 3. Double-click `laukofront.exe` → **Play** → **Start**.
 

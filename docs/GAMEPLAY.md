@@ -264,6 +264,14 @@ impossible). Bots attack a neighbouring traitor first.
   land share, troops and buildings, a chart of your land over the match; New match, Main menu,
   Keep watching, Quit.
 
+## 1.0.1: boats and the action menu
+
+- Left click on any land of a player across the sea sends a boat (it lands on their coast nearest
+  the click). Up to 3 boats at once; several land attacks at once are fine too.
+- Right click anything for the action menu: attack, send boat, expand, build, upgrade, warship and
+  diplomacy, with troop counts and prices. "Ask allies to attack them" marks a target your allied
+  nations go after.
+
 ## Coming next
 
 - **P14:** release: QA pass, Windows package, version 1.0.0.

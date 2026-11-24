@@ -1,4 +1,4 @@
-laukofront 1.0.0
+laukofront 1.0.1
 ================
 
 A territorial strategy game for Windows: expand your land, ally with or betray AI nations, build
@@ -22,7 +22,7 @@ signed. Choose "More info" -> "Run anyway", or build it yourself from the source
 Controls (press H in the game for the full list)
 -------------------------------------------------
 Left click            spawn, attack, send a boat across water
-Right click a player  diplomacy (alliance, embargo, gifts, target)
+Right click anything  action menu: attack, send boat, build, warship, diplomacy
 1 - 9                 attack size 10% - 90%
 Q E F G V B           city, port, factory, defense post, missile silo, SAM
 N  Z X C              warship, atom bomb, hydrogen bomb, MIRV
